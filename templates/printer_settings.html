@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Printer settings · Dr Bhasin's Lab</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f5f7fb;
+        color: #172033;
+        font:
+          14px/1.45 Inter,
+          Segoe UI,
+          Arial,
+          sans-serif;
+      }
+      .app {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+      aside {
+        background: #101828;
+        color: #d0d5dd;
+        padding: 20px 14px;
+      }
+      .brand {
+        align-items: center;
+        background: #fff;
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        padding: 10px 12px;
+      }
+      .brand img {
+        display: block;
+        max-height: 54px;
+        max-width: 176px;
+        object-fit: contain;
+        width: 100%;
+      }
+      nav {
+        display: grid;
+        gap: 5px;
+        margin-top: 24px;
+      }
+      nav a {
+        border-radius: 8px;
+        color: #d0d5dd;
+        padding: 11px 12px;
+        text-decoration: none;
+      }
+      nav a.active,
+      nav a:hover {
+        background: #1d2939;
+        color: #fff;
+      }
+      .user-panel {
+        border-top: 1px solid #344054;
+        display: grid;
+        gap: 8px;
+        margin: 18px 10px 0;
+        padding-top: 14px;
+      }
+      .user-panel span {
+        color: #98a2b3;
+        font-size: 11px;
+      }
+      .user-panel strong {
+        color: #fff;
+      }
+      .user-panel a {
+        color: #dbeafe;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      main {
+        padding: 42px 28px;
+      }
+      .wrap {
+        margin: 0 auto;
+        max-width: 980px;
+      }
+      .hero,
+      .card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+      }
+      .hero {
+        margin-bottom: 16px;
+        padding: 20px 22px;
+      }
+      h1 {
+        font-size: 24px;
+        line-height: 1.1;
+        margin: 0 0 6px;
+      }
+      p {
+        color: #667085;
+        margin: 0;
+      }
+      .card {
+        padding: 20px;
+      }
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+      label {
+        display: block;
+        font-weight: 800;
+        margin-bottom: 8px;
+      }
+      select {
+        background: #fff;
+        border: 1px solid #d0d5dd;
+        border-radius: 10px;
+        color: #172033;
+        font: inherit;
+        min-height: 46px;
+        padding: 0 12px;
+        width: 100%;
+      }
+      select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+        outline: 0;
+      }
+      .hint {
+        color: #667085;
+        font-size: 12px;
+        margin-top: 6px;
+      }
+      .actions {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 18px;
+      }
+      .btn {
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 800;
+        padding: 11px 16px;
+        text-decoration: none;
+      }
+      .primary {
+        background: #2563eb;
+        border: 0;
+        color: #fff;
+      }
+      .secondary {
+        background: #fff;
+        border: 1px solid #d0d5dd;
+        color: #172033;
+      }
+      .flash {
+        border-radius: 12px;
+        margin-bottom: 14px;
+        padding: 12px 14px;
+      }
+      .flash.success {
+        background: #d1fadf;
+        color: #05603a;
+      }
+      .flash.error {
+        background: #fee4e2;
+        color: #b42318;
+      }
+      .empty {
+        background: #fffbeb;
+        border: 1px solid #fedf89;
+        border-radius: 12px;
+        color: #92400e;
+        margin-bottom: 16px;
+        padding: 12px 14px;
+      }
+      @media (max-width: 760px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+        main {
+          padding: 22px 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside>
+        <div class="brand">
+          <img
+            src="{{ url_for('static', filename='img/dr-bhasins-lab-logo.png') }}"
+            alt="Dr Bhasin's Lab"
+          />
+        </div>
+        <nav>
+          <a href="{{ url_for('dashboard') }}">Dispatch queue</a>
+          <a href="{{ url_for('print_batches') }}">Print batches</a>
+          <a href="{{ url_for('scan_labels') }}">Scan labels</a>
+          <a class="active" href="{{ url_for('printer_settings') }}">Printer settings</a>
+        </nav>
+        <div class="user-panel">
+          <span>Logged in</span>
+          <strong>{{ session.auth_user.name }}</strong>
+          <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+      </aside>
+      <main>
+        <div class="wrap">
+          {% with messages=get_flashed_messages(with_categories=true) %}{% for
+          category,message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}{% endwith %}
+          <section class="hero">
+            <h1>Printer settings</h1>
+            <p>Select which connected printer should be used for reports, receipts and courier labels.</p>
+          </section>
+          {% if not printers %}
+          <div class="empty">
+            No Windows printers were detected. You can still keep these settings on Windows default and print normally.
+          </div>
+          {% endif %}
+          <form class="card" method="post" action="{{ url_for('printer_settings') }}">
+            <div class="grid">
+              {% for role, label, hint in [
+                ("report", "Report printer", "Patient report PDFs and separator pages will use this printer."),
+                ("receipt", "Receipt printer", "Paying patient receipts will use this printer."),
+                ("label", "Label printer", "Courier label sheets open in the browser print dialog; choose this printer there.")
+              ] %}
+              <div>
+                <label for="{{ role }}">{{ label }}</label>
+                <select id="{{ role }}" name="{{ role }}">
+                  <option value="">Use Windows default printer</option>
+                  {% for printer in printers %}
+                  <option
+                    value="{{ printer.name }}"
+                    {% if settings.get(role) == printer.name %}selected{% endif %}
+                  >
+                    {{ printer.name }}{% if printer.default %} (Default){% endif %}
+                  </option>
+                  {% endfor %}
+                </select>
+                <div class="hint">{{ hint }}</div>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="actions">
+              <a class="btn secondary" href="{{ url_for('dashboard') }}">Back</a>
+              <button class="btn primary" type="submit">Save printers</button>
+            </div>
+          </form>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

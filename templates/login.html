@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login · Dr Bhasin's Lab Courier Printing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,650;9..144,750&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/main.css') }}"
+    />
+  </head>
+  <body class="login-page">
+    <main class="login-shell">
+      <section class="login-card" aria-label="Courier Printing login">
+        <aside class="login-story" aria-hidden="true">
+          <div>
+            <p class="login-eyebrow">Dr Bhasin's Lab</p>
+            <h2>Every sample, on its way.</h2>
+            <p>
+              Print courier labels and manage dispatches from one secure
+              console.
+            </p>
+          </div>
+          <ul>
+            <li>Access limited to active staff</li>
+            <li>Every sign-in is recorded</li>
+            <li>Need help? Ask your branch admin</li>
+          </ul>
+        </aside>
+        <section class="login-form-panel">
+          <div class="login-brand">
+            <img
+              src="{{ url_for('static', filename='img/dr-bhasins-lab-logo.png') }}"
+              alt="Dr Bhasin's Lab"
+            />
+          </div>
+          <div class="login-copy">
+            <h1>Courier Printing</h1>
+            <p>Sign in to the operations console.</p>
+          </div>
+          <div
+            id="login-status"
+            class="login-message-stack"
+            role="status"
+            aria-live="polite"
+          >
+            {% with messages=get_flashed_messages(with_categories=true) %}{% for
+            category,message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}{% endwith %}
+          </div>
+          <form method="post" action="{{ url_for('login_submit') }}" novalidate>
+            <input
+              type="hidden"
+              name="next"
+              value="{{ request.args.get('next', '') }}"
+            />
+            <div class="login-field">
+              <label for="username">User name</label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                list="active-users"
+                autocomplete="off"
+                placeholder="Enter your active user name"
+                aria-describedby="username-error"
+                required
+              />
+              <datalist id="active-users"></datalist>
+              <small id="username-error" class="field-error"></small>
+            </div>
+            <div class="login-field">
+              <label for="password">Password</label>
+              <div class="password-control">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  inputmode="numeric"
+                  pattern="[0-9]{8}"
+                  maxlength="8"
+                  placeholder="DDMMYYYY"
+                  aria-describedby="password-hint password-error"
+                  required
+                />
+                <button
+                  id="password-toggle"
+                  class="password-toggle"
+                  type="button"
+                  aria-label="Show password"
+                  aria-pressed="false"
+                >
+                  Show
+                </button>
+              </div>
+              <small id="password-hint" class="field-hint"
+                >Your date of birth, for example 05011990.</small
+              >
+              <small id="password-error" class="field-error"></small>
+            </div>
+            <button id="login-submit" class="btn primary" type="submit">
+              <span class="submit-spinner" aria-hidden="true"></span>
+              <span class="submit-text">Sign in</span>
+            </button>
+          </form>
+          <p class="login-footer">
+            Trouble signing in? Contact your administrator.
+          </p>
+        </section>
+      </section>
+    </main>
+    <script>
+      const input = document.getElementById("username");
+      const list = document.getElementById("active-users");
+      const form = document.querySelector(".login-form-panel form");
+      const password = document.getElementById("password");
+      const passwordToggle = document.getElementById("password-toggle");
+      const submitButton = document.getElementById("login-submit");
+      const submitText = submitButton.querySelector(".submit-text");
+      const usernameError = document.getElementById("username-error");
+      const passwordError = document.getElementById("password-error");
+      let timer;
+      function optionValue(name) {
+        return String(name)
+          .replaceAll("&", "&amp;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;");
+      }
+      function setFieldError(field, node, message) {
+        field.setAttribute("aria-invalid", message ? "true" : "false");
+        node.textContent = message;
+      }
+      function resetLoading() {
+        submitButton.disabled = false;
+        submitButton.classList.remove("is-loading");
+        submitText.textContent = "Sign in";
+      }
+      input.addEventListener("input", () => {
+        clearTimeout(timer);
+        setFieldError(input, usernameError, "");
+        const value = input.value.trim();
+        if (!value) {
+          list.innerHTML = "";
+          return;
+        }
+        timer = setTimeout(async () => {
+          try {
+            const response = await fetch(
+              `{{ url_for("login_user_suggestions") }}?q=${encodeURIComponent(value)}`,
+            );
+            const names = await response.json();
+            list.innerHTML = names
+              .map((name) => `<option value="${optionValue(name)}"></option>`)
+              .join("");
+          } catch (_) {
+            list.innerHTML = "";
+          }
+        }, 180);
+      });
+      password.addEventListener("input", () => {
+        password.value = password.value.replace(/\D/g, "").slice(0, 8);
+        setFieldError(password, passwordError, "");
+      });
+      passwordToggle.addEventListener("click", () => {
+        const showing = password.type === "text";
+        password.type = showing ? "password" : "text";
+        passwordToggle.textContent = showing ? "Show" : "Hide";
+        passwordToggle.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+        passwordToggle.setAttribute("aria-pressed", String(!showing));
+        password.focus();
+      });
+      form.addEventListener("submit", (event) => {
+        setFieldError(input, usernameError, "");
+        setFieldError(password, passwordError, "");
+        const username = input.value.trim();
+        const dob = password.value.trim();
+        if (!username) {
+          event.preventDefault();
+          setFieldError(input, usernameError, "Enter your user name.");
+          input.focus();
+          return;
+        }
+        if (!/^\d{8}$/.test(dob)) {
+          event.preventDefault();
+          setFieldError(
+            password,
+            passwordError,
+            "Enter your date of birth as 8 digits (DDMMYYYY).",
+          );
+          password.focus();
+          return;
+        }
+        submitButton.disabled = true;
+        submitButton.classList.add("is-loading");
+        submitText.textContent = "Signing in…";
+      });
+      window.addEventListener("pageshow", resetLoading);
+    </script>
+  </body>
+</html>

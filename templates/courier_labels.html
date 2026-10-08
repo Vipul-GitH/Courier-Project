@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Courier labels</title>
+    <style>
+      :root {
+        --label-width: 99.1mm;
+        --label-height: 67.7mm;
+        --page-margin-top: 13mm;
+        --page-margin-left: 5.9mm;
+        --label-gap-x: 0mm;
+        --label-gap-y: 0mm;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        background: #eef2f7;
+        color: #000;
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 0;
+      }
+      .toolbar {
+        align-items: center;
+        background: #111827;
+        color: #fff;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        padding: 12px 18px;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+      }
+      .toolbar button {
+        background: #2563eb;
+        border: 0;
+        border-radius: 10px;
+        color: #fff;
+        cursor: pointer;
+        font-weight: 800;
+        padding: 10px 16px;
+      }
+      .printer-note {
+        color: #dbeafe;
+        display: block;
+        font-size: 12px;
+        margin-top: 3px;
+      }
+      .sheet {
+        background: #fff;
+        display: grid;
+        gap: var(--label-gap-y) var(--label-gap-x);
+        grid-template-columns: repeat(2, var(--label-width));
+        grid-auto-rows: var(--label-height);
+        margin: 24px auto;
+        min-height: 297mm;
+        padding: var(--page-margin-top) 0 0 var(--page-margin-left);
+        width: 210mm;
+      }
+      .label,
+      .blank {
+        height: var(--label-height);
+        width: var(--label-width);
+      }
+      .label {
+        border: 0.45mm solid #111;
+        border-radius: 3mm;
+        display: grid;
+        grid-template-rows: 10mm 32mm 15mm 9mm;
+        overflow: hidden;
+      }
+      .label-private {
+        align-items: center;
+        border-bottom: 0.35mm solid #222;
+        display: flex;
+        font-size: 15pt;
+        font-weight: 950;
+        justify-content: center;
+        letter-spacing: 0.2px;
+        line-height: 1;
+        text-align: center;
+      }
+      .recipient {
+        padding: 2.2mm 5mm 1.2mm;
+      }
+      .recipient-name {
+        font-size: 9.8pt;
+        font-weight: 950;
+        line-height: 1.08;
+        margin-bottom: 1mm;
+        max-height: 12mm;
+        overflow: hidden;
+        text-transform: uppercase;
+      }
+      .address {
+        font-size: 10.4pt;
+        font-weight: 700;
+        line-height: 1.08;
+        white-space: pre-line;
+      }
+      .address.missing {
+        color: #b00000;
+        font-size: 13pt;
+      }
+      .envelope {
+        align-items: center;
+        border-bottom: 0.3mm solid #222;
+        border-top: 0.3mm solid #222;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 1mm 4mm 0;
+      }
+      .envelope-id {
+        font-size: 11pt;
+        font-weight: 950;
+        line-height: 1;
+        margin-bottom: 1mm;
+      }
+      .barcode {
+        height: 7mm;
+        width: 58mm;
+      }
+      .barcode-row {
+        align-items: center;
+        display: grid;
+        gap: 2mm;
+        grid-template-columns: 8mm 58mm 8mm;
+        justify-content: center;
+        width: 100%;
+      }
+      .delivery-mark {
+        align-items: center;
+        border: 0.42mm solid #111;
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 8.8pt;
+        font-weight: 950;
+        height: 7mm;
+        justify-content: center;
+        letter-spacing: -0.2px;
+        line-height: 1;
+        width: 7mm;
+      }
+      .barcode-text {
+        font-size: 8.5pt;
+        font-weight: 800;
+        letter-spacing: 0.6px;
+        line-height: 1;
+        margin-top: 0.5mm;
+      }
+      .report-row {
+        align-items: center;
+        display: grid;
+        font-size: 7.8pt;
+        font-weight: 850;
+        gap: 1.4mm;
+        grid-template-columns: 1fr 27mm;
+        padding: 0 4mm;
+      }
+      .report-ids {
+        line-height: 1.1;
+        max-height: 7mm;
+        overflow: hidden;
+        white-space: normal;
+      }
+      .verified {
+        align-items: center;
+        display: flex;
+        font-size: 10pt;
+        font-weight: 950;
+        gap: 1.8mm;
+        justify-content: flex-end;
+      }
+      .box {
+        border: 0.45mm solid #111;
+        border-radius: 0;
+        flex: 0 0 auto;
+        display: inline-block;
+        height: 6mm;
+        width: 6mm;
+      }
+      @page {
+        margin: 0;
+        size: A4 portrait;
+      }
+      @media print {
+        body {
+          background: #fff;
+        }
+        .toolbar {
+          display: none;
+        }
+        .sheet {
+          box-shadow: none;
+          margin: 0;
+          page-break-after: always;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <div>
+        <strong>Courier label sheet</strong>
+        <span>{{ envelopes|length }} label(s), starting at position {{ start_position }}</span>
+        <span class="printer-note">
+          Printer: {{ label_printer if label_printer else "Windows default / choose in print dialog" }}
+        </span>
+      </div>
+      <button type="button" onclick="window.print()">Print this sheet</button>
+    </div>
+    {% for page_envelopes in envelopes|batch(8, none) %}
+    <main class="sheet">
+      {% for envelope in page_envelopes if envelope %}
+      <section class="label">
+        <div class="label-private">PRIVATE &amp; CONFIDENTIAL</div>
+        <div class="recipient">
+          <div class="recipient-name">{{ envelope.recipient_name }}</div>
+          {% if envelope.address_missing %}
+          <div class="address missing">ADDRESS REQUIRED</div>
+          {% else %}
+          <div class="address">{{ envelope.recipient_address }}</div>
+          {% endif %}
+          {% if envelope.mobile_no %}<div class="address">M: {{ envelope.mobile_no }}</div>{% endif %}
+        </div>
+        <div class="envelope">
+          <div class="envelope-id">ENVELOPE ID: {{ envelope.envelope_id }}</div>
+          <div class="barcode-row">
+            <span class="delivery-mark">{{ envelope.delivery_marker }}</span>
+            {{ envelope.barcode_svg|safe }}
+            <span class="delivery-mark">{{ envelope.delivery_marker }}</span>
+          </div>
+          <div class="barcode-text">{{ envelope.envelope_id }}</div>
+        </div>
+        <div class="report-row">
+          <div class="report-ids">REPORT IDS: {{ envelope.report_ids|join(' | ') }}</div>
+          <div class="verified"><span class="box"></span> VERIFIED</div>
+        </div>
+      </section>
+      {% endfor %}
+    </main>
+    {% endfor %}
+  </body>
+</html>

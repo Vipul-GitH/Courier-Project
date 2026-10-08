@@ -1,0 +1,706 @@
+<!doctype html> {% if mode == 'batches' %}<style>
+  .print-date-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    margin-right: 22px;
+  }
+  .print-date-filter label {
+    color: #667085;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .print-date-filter input {
+    border: 1px solid #d0d5dd;
+    border-radius: 7px;
+    padding: 7px 9px;
+    color: #172033;
+    background: #fff;
+  }
+  .print-date-filter button {
+    border: 0;
+    border-radius: 7px;
+    padding: 8px 11px;
+    background: linear-gradient(135deg, #0f6b78, #1f9f78);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  @media (max-width: 700px) {
+    .top {
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .print-date-filter {
+      order: 3;
+      margin: 0;
+      width: 100%;
+    }
+  }
+</style>
+<script defer>
+  document.addEventListener("DOMContentLoaded", () => {
+    const top = document.querySelector(".top");
+    if (!top) return;
+    const form = document.createElement("form");
+    form.className = "print-date-filter";
+    form.method = "get";
+    form.innerHTML =
+      '<label for="print-date">Print date</label><input id="print-date" name="print_date" type="date" value="{{ selected_print_date }}"><button type="submit">Apply</button>';
+    top.insertBefore(form, top.querySelector(".back"));
+  });
+</script>
+{% endif %}
+<script defer>
+  document.addEventListener("DOMContentLoaded", () => {
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (n) =>
+          ["SCRIPT", "STYLE"].includes(n.parentElement?.tagName)
+            ? NodeFilter.FILTER_REJECT
+            : NodeFilter.FILTER_ACCEPT,
+      },
+    );
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach((n) => {
+      n.nodeValue = n.nodeValue.replaceAll("No Request Slip", "Unknown group");
+    });
+  });
+</script>
+<style>
+  aside nav a[href$="print-history"] {
+    display: none;
+  }
+</style>
+{% if mode == 'batches' %}
+<script defer>
+  document.addEventListener("DOMContentLoaded", () =>
+    setTimeout(() => {
+      const tree = document.querySelector(".batch-tree");
+      if (!tree) return;
+      const cards = [...tree.querySelectorAll(".batch-card")];
+      cards.forEach((card) => {
+        const summary = card.querySelector(":scope > summary");
+        if (!summary || !summary.textContent.includes("No batch")) return;
+        card.classList.add("historical");
+        summary.childNodes[0].textContent = "Previously printed bookings ";
+        const note = document.createElement("span");
+        note.className = "history-note";
+        note.textContent = "Historical records";
+        summary.append(note);
+      });
+      const metrics = document.querySelectorAll(".cards .card"),
+        bookings = tree.querySelectorAll(".booking-row").length,
+        patients = tree.querySelectorAll(".patient-list li").length,
+        historical = tree.querySelectorAll(".historical .booking-row").length;
+      if (metrics.length >= 3) {
+        metrics[0].querySelector("span").textContent = "Printed bookings";
+        metrics[0].querySelector("b").textContent = bookings;
+        metrics[1].querySelector("span").textContent = "Printed patients";
+        metrics[1].querySelector("b").textContent = patients;
+        metrics[2].querySelector("span").textContent = "Historical bookings";
+        metrics[2].querySelector("b").textContent = historical;
+      }
+      const heading = document.querySelector(".top h1"),
+        text = document.querySelector(".top p");
+      if (heading) heading.textContent = "Printed bookings";
+      if (text)
+        text.textContent = "Expand a booking to view its printed patients.";
+    }, 0),
+  );
+</script>
+{% endif %} {% if mode == 'batches' %}<style>
+  .batch-card.historical {
+    border-color: #bfdbfe;
+    background: #f8fbff;
+  }
+  .batch-card.historical > summary {
+    color: #175cd3;
+  }
+  .history-note {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #175cd3;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+</style>
+<script defer>
+  document.addEventListener("DOMContentLoaded", () => {
+    const tree = document.querySelector(".batch-tree");
+    if (!tree) return;
+    const cards = [...tree.querySelectorAll(".batch-card")];
+    cards.forEach((card) => {
+      const summary = card.querySelector(":scope > summary");
+      if (summary?.firstChild?.textContent.trim() === "No batch") {
+        card.classList.add("historical");
+        summary.firstChild.textContent = "Previously printed bookings";
+        const note = document.createElement("span");
+        note.className = "history-note";
+        note.textContent = "Historical records";
+        summary.append(note);
+      }
+    });
+    const bookingCount = tree.querySelectorAll(".booking-row").length,
+      patientCount = tree.querySelectorAll(".patient-list li").length,
+      metrics = document.querySelectorAll(".cards .card");
+    if (metrics.length >= 3) {
+      metrics[0].querySelector("span").textContent = "Printed booking groups";
+      metrics[0].querySelector("b").textContent = bookingCount;
+      metrics[1].querySelector("span").textContent = "Printed patients";
+      metrics[1].querySelector("b").textContent = patientCount;
+      metrics[2].querySelector("span").textContent = "Historical bookings";
+      metrics[2].querySelector("b").textContent = tree.querySelectorAll(
+        ".historical .booking-row",
+      ).length;
+    }
+    const title = document.querySelector(".top h1"),
+      subtitle = document.querySelector(".top p");
+    if (title) title.textContent = "Printed bookings";
+    if (subtitle)
+      subtitle.textContent =
+        "Expand a booking to see each printed patient and report details.";
+  });
+</script>
+{% endif %} {% if mode == 'batches' %}<style>
+  .batch-tree {
+    display: grid;
+    gap: 12px;
+  }
+  .batch-card {
+    background: #fff;
+    border: 1px solid #dfe3eb;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .batch-card > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 15px 17px;
+    font-weight: 800;
+  }
+  .batch-card > summary::-webkit-details-marker,
+  .booking-row > summary::-webkit-details-marker {
+    display: none;
+  }
+  .batch-card > summary:before,
+  .booking-row > summary:before {
+    content: "›";
+    display: inline-block;
+    margin-right: 9px;
+    font-size: 19px;
+    line-height: 12px;
+    color: #475467;
+    transform: rotate(0);
+    transition: transform 0.15s;
+  }
+  .batch-card[open] > summary:before,
+  .booking-row[open] > summary:before {
+    transform: rotate(90deg);
+  }
+  .batch-meta {
+    display: inline-block;
+    margin-left: 10px;
+    color: #667085;
+    font-size: 12px;
+    font-weight: 400;
+  }
+  .booking-list {
+    padding: 0 14px 14px;
+    display: grid;
+    gap: 8px;
+  }
+  .booking-row {
+    border: 1px solid #eaecf0;
+    border-radius: 9px;
+  }
+  .booking-row > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 12px 13px;
+    font-weight: 800;
+  }
+  .booking-row > summary span {
+    color: #667085;
+    font-size: 12px;
+    font-weight: 400;
+  }
+  .patient-list {
+    margin: 0;
+    padding: 0 14px 12px;
+    list-style: none;
+  }
+  .patient-list li {
+    border-top: 1px solid #f2f4f7;
+    padding: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .patient-list small {
+    color: #667085;
+  }
+  .receipt-pill {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #eef4ff;
+    color: #175cd3;
+    font-size: 10px;
+    font-weight: 800;
+  }
+</style>
+<script defer>
+  document.addEventListener("DOMContentLoaded", () => {
+    const table = document.querySelector(".table-wrap table"),
+      wrap = document.querySelector(".table-wrap");
+    if (!table || !wrap) return;
+    const groups = new Map();
+    [...table.tBodies[0].rows].forEach((row) => {
+      const cells = row.cells,
+        batch = cells[0]?.innerText.trim() || "No batch",
+        booking = cells[1]?.innerText.trim() || "No Request Slip",
+        patient = cells[2]?.innerText.trim() || "Unknown patient",
+        stage = cells[4]?.innerText.trim() || "Report",
+        time = cells[5]?.innerText.trim() || "—",
+        receipt = cells[6]?.innerText.trim() || "";
+      if (!groups.has(batch)) groups.set(batch, new Map());
+      const bookings = groups.get(batch);
+      if (!bookings.has(booking)) bookings.set(booking, []);
+      bookings.get(booking).push({ patient, stage, time, receipt });
+    });
+    const tree = document.createElement("section");
+    tree.className = "batch-tree";
+    for (const [batch, bookings] of groups) {
+      const total = [...bookings.values()].flat().length,
+        card = document.createElement("details");
+      card.className = "batch-card";
+      const head = document.createElement("summary");
+      head.textContent = batch;
+      const meta = document.createElement("span");
+      meta.className = "batch-meta";
+      meta.textContent = `${bookings.size} booking${bookings.size === 1 ? "" : "s"} · ${total} patient${total === 1 ? "" : "s"}`;
+      head.append(meta);
+      const list = document.createElement("div");
+      list.className = "booking-list";
+      for (const [booking, patients] of bookings) {
+        const row = document.createElement("details");
+        row.className = "booking-row";
+        const title = document.createElement("summary");
+        title.textContent = booking;
+        const count = document.createElement("span");
+        count.textContent = ` · ${patients.length} patient${patients.length === 1 ? "" : "s"} printed`;
+        title.append(count);
+        const patientList = document.createElement("ul");
+        patientList.className = "patient-list";
+        patients.forEach((item) => {
+          const li = document.createElement("li"),
+            left = document.createElement("div"),
+            right = document.createElement("div");
+          left.textContent = item.patient;
+          const sub = document.createElement("small");
+          sub.textContent = `${item.stage} · ${item.time}`;
+          left.append(document.createElement("br"), sub);
+          right.innerHTML =
+            item.receipt === "Included"
+              ? '<span class="receipt-pill">Receipt included</span>'
+              : "";
+          li.append(left, right);
+          patientList.append(li);
+        });
+        row.append(title, patientList);
+        list.append(row);
+      }
+      card.append(head, list);
+      tree.append(card);
+    }
+    wrap.replaceWith(tree);
+  });
+</script>
+{% endif %}
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      Dr Bhasin's Lab Print {{ 'Batches' if mode == 'batches' else 'History' }}
+    </title>
+    <style>
+      :root {
+        --ink: #172033;
+        --muted: #667085;
+        --line: #e5e7eb;
+        --bg: #f5f7fb;
+        --nav: #083842;
+        --blue: #0f6b78;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        font:
+          14px/1.45 Inter,
+          Segoe UI,
+          Arial,
+          sans-serif;
+        color: var(--ink);
+      }
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 240px 1fr;
+      }
+      aside {
+        background: #101828;
+        color: #d0d5dd;
+        padding: 20px 14px;
+      }
+      .brand {
+        align-items: center;
+        background: #fff;
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        padding: 10px 12px;
+      }
+      .brand img {
+        display: block;
+        filter: none;
+        max-height: 54px;
+        max-width: 176px;
+        object-fit: contain;
+        width: 100%;
+      }
+      .brand-title {
+        display: none;
+      }
+      nav {
+        display: grid;
+        gap: 5px;
+        margin-top: 24px;
+      }
+      nav a {
+        padding: 11px 12px;
+        border-radius: 8px;
+        text-decoration: none;
+        color: #d0d5dd;
+      }
+      nav a.active,
+      nav a:hover {
+        background: #1d2939;
+        color: #fff;
+      }
+      .user-panel {
+        border-top: 1px solid #344054;
+        display: grid;
+        gap: 8px;
+        margin: 18px 10px 0;
+        padding-top: 14px;
+      }
+      .user-panel span {
+        color: #98a2b3;
+        font-size: 11px;
+      }
+      .user-panel strong {
+        color: #fff;
+        font-size: 13px;
+      }
+      .user-panel a {
+        color: #bff2e2;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .content {
+        padding: 28px;
+        max-width: 1400px;
+        width: 100%;
+        margin: auto;
+      }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 22px;
+      }
+      .top h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+      .top p {
+        margin: 4px 0;
+        color: var(--muted);
+      }
+      .back {
+        color: #175cd3;
+        text-decoration: none;
+        font-weight: 700;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .card,
+      .table-wrap {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+      }
+      .card {
+        padding: 16px;
+      }
+      .card b {
+        display: block;
+        font-size: 26px;
+      }
+      .card span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .table-wrap {
+        overflow: auto;
+      }
+      .table-title {
+        padding: 16px;
+        border-bottom: 1px solid var(--line);
+        font-weight: 800;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 720px;
+      }
+      th,
+      td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid #f0f2f5;
+        vertical-align: top;
+      }
+      th {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        background: #fcfcfd;
+      }
+      .badge {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 3px 8px;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .success {
+        background: #ecfdf3;
+        color: #067647;
+      }
+      .failed {
+        background: #fef3f2;
+        color: #b42318;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .error {
+        color: #b42318;
+        max-width: 320px;
+        white-space: normal;
+      }
+      .top p,
+      .card span,
+      .muted,
+      .batch-meta,
+      .booking-row > summary span,
+      .patient-list small,
+      .print-date-filter label,
+      .user-panel span,
+      .user-panel a {
+        font-size: 14px !important;
+      }
+      .badge,
+      .history-note,
+      .receipt-pill,
+      th {
+        font-size: 12px !important;
+      }
+      .booking-row > summary,
+      .batch-card > summary,
+      td {
+        font-size: 15px !important;
+      }
+      @media (max-width: 800px) {
+        .app {
+          grid-template-columns: 72px 1fr;
+        }
+        aside {
+          padding: 16px 10px;
+        }
+        .brand {
+          font-size: 0;
+        }
+        .brand:before {
+          display: none;
+        }
+        .brand img {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          object-fit: cover;
+          object-position: left center;
+        }
+        .brand-title,
+        nav span {
+          display: none;
+        }
+        .content {
+          padding: 16px;
+        }
+        .cards {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside>
+        <div class="brand">
+          <img
+            src="{{ url_for('static', filename='img/dr-bhasins-lab-logo.png') }}"
+            alt="Dr Bhasin's Lab"
+          />
+        </div>
+        <nav>
+          <a href="{{ url_for('dashboard') }}">Dispatch queue</a
+          ><a
+            class="{{ 'active' if mode == 'batches' else '' }}"
+            href="{{ url_for('print_batches') }}"
+            >Print batches</a
+          ><a
+            class="{{ 'active' if mode == 'history' else '' }}"
+            href="{{ url_for('print_history') }}"
+            >Print history</a
+          ><a href="{{ url_for('scan_labels') }}">Scan labels</a
+          ><a href="{{ url_for('printer_settings') }}">Printer settings</a
+          >
+        </nav>
+        <div class="user-panel">
+          <span>Logged in</span>
+          <strong>{{ session.auth_user.name }}</strong>
+          <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+      </aside>
+      <main class="content">
+        <div class="top">
+          <div>
+            <h1>
+              {{ 'Successful print batches' if mode == 'batches' else 'Print
+              history' }}
+            </h1>
+            <p>
+              {% if mode == 'batches' %}Only batches that completed
+              successfully.{% else %}Every successful and failed print attempt,
+              including No Request Slip patients.{% endif %}
+            </p>
+          </div>
+          <a class="back" href="{{ url_for('dashboard') }}">← Dispatch queue</a>
+        </div>
+        <div class="cards">
+          <article class="card">
+            <span
+              >{{ 'Successful batches' if mode == 'batches' else 'Recorded
+              batches' }}</span
+            ><b>{{ batches|length }}</b>
+          </article>
+          <article class="card">
+            <span>Patient print records</span><b>{{ attempts|length }}</b>
+          </article>
+          <article class="card">
+            <span
+              >{% if mode == 'batches' %}Included ungrouped records{% else
+              %}Failed records{% endif %}</span
+            ><b
+              >{% if mode == 'batches' %}{{
+              attempts|selectattr('booking_label','equalto','No Request
+              Slip')|list|length }}{% else %}{{
+              attempts|selectattr('status','equalto','failed')|list|length }}{%
+              endif %}</b
+            >
+          </article>
+        </div>
+        <section class="table-wrap">
+          <div class="table-title">
+            {% if mode == 'batches' %}Successfully printed booking / patient
+            records{% else %}All print attempts{% endif %}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Batch</th>
+                <th>Booking</th>
+                <th>Patient</th>
+                <th>Status</th>
+                <th>Stage</th>
+                <th>Time</th>
+                <th>
+                  {% if mode == 'history' %}Error{% else %}Receipt{% endif %}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in attempts %}
+              <tr>
+                <td>
+                  {% if row.batch_id %}#{{ row.batch_id }}{% else %}<span
+                    class="muted"
+                    >No batch</span
+                  >{% endif %}
+                </td>
+                <td>{{ row.booking_label or 'No Request Slip' }}</td>
+                <td>
+                  <strong>{{ row.patient_name or 'Unknown patient' }}</strong
+                  ><br /><span class="muted">{{ row.patient_id }}</span>
+                </td>
+                <td>
+                  <span class="badge {{ row.status|default('success') }}"
+                    >{{ row.status|default('success')|title }}</span
+                  >
+                </td>
+                <td>{{ row.stage|default('report')|title }}</td>
+                <td>
+                  {{ row.attempted_at.strftime('%d %b %Y, %I:%M %p') if
+                  row.attempted_at else '—' }}
+                </td>
+                <td>
+                  {% if mode == 'history' %}<span class="error"
+                    >{{ row.error_message or '—' }}</span
+                  >{% else %}{{ 'Included' if row.receipt_included else 'Not
+                  required' }}{% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="7" class="muted">No print records yet.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

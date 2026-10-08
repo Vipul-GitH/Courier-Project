@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+receipt_cache/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+.pytest_cache/
+.mypy_cache/

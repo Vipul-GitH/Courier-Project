@@ -1,0 +1,2730 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dr Bhasin's Lab Courier Printing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/main.css') }}"
+    />
+  </head>
+  <body
+    data-review-status="{{ review_status }}"
+    data-print-status="{{ print_status }}"
+  >
+    <script defer>
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelector('select[name="review_status"]').value =
+          document.body.dataset.reviewStatus;
+        document.querySelector('select[name="print_status"]').value =
+          document.body.dataset.printStatus;
+      });
+    </script>
+    <style>
+      .member-action {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 9px;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid #eaecf0;
+      }
+      .member-action .btn {
+        min-width: 124px;
+        text-align: center;
+      }
+      .member-action .approved {
+        font-weight: 700;
+        white-space: nowrap;
+        color: #067647;
+      }
+      .partial-review-state {
+        border-radius: 999px;
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 4px 8px;
+        white-space: nowrap;
+      }
+      .partial-review-state.unseen {
+        background: #eff8ff;
+        color: #175cd3;
+      }
+      .partial-review-state.wait {
+        background: #fff7e6;
+        color: #a15c00;
+      }
+      .queue-badges {
+        align-items: flex-end;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .partial-queue-badge {
+        border-radius: 999px;
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 800;
+        padding: 3px 7px;
+        white-space: nowrap;
+      }
+      .partial-queue-badge.unseen {
+        background: #eff8ff;
+        color: #175cd3;
+      }
+      .partial-queue-badge.wait {
+        background: #fff7e6;
+        color: #a15c00;
+      }
+      .label-queue-badge {
+        background: #ecfdf3;
+        border-radius: 999px;
+        color: #027a48;
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 800;
+        padding: 3px 7px;
+        white-space: nowrap;
+      }
+      .label-summary {
+        align-items: center;
+        background: #ecfdf3;
+        border-bottom: 1px solid #d0d5dd;
+        color: #027a48;
+        display: flex;
+        gap: 8px;
+        padding: 9px 24px;
+      }
+      .label-summary strong {
+        font-size: 12px;
+      }
+      .label-summary span {
+        color: #475467;
+        font-size: 12px;
+      }
+      .partial-review-form {
+        display: inline-block;
+      }
+      .panel-company,
+      .charge-mode {
+        display: inline-block;
+        margin-left: 6px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 700;
+      }
+      .panel-company {
+        background: #eef4ff;
+        color: #175cd3;
+      }
+      .charge-mode {
+        margin-left: 0;
+        background: #eff8ff;
+        color: #175cd3;
+      }
+      .charge-mode.free {
+        background: #ecfdf3;
+        color: #067647;
+      }
+      .charge-mode.credit {
+        background: #f4f3ff;
+        color: #5925dc;
+      }
+      @media (max-width: 700px) {
+        .member-action {
+          justify-content: flex-start;
+        }
+        .member-action .btn {
+          min-width: 0;
+        }
+      }
+    </style>
+    <script defer>
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll(".member-top p").forEach((node) => {
+          const parts = node.textContent.split(" · ");
+          if (parts.length < 3) return;
+          const company = parts.pop();
+          node.textContent = parts.join(" · ");
+          const badge = document.createElement("span");
+          badge.className = "panel-company";
+          badge.textContent = `Panel: ${company}`;
+          node.append(" ", badge);
+        });
+        document.querySelectorAll(".member-top small").forEach((node) => {
+          const parts = node.textContent.split(" · ");
+          if (parts.length < 2) return;
+          const mode = parts.shift();
+          node.textContent = parts.join(" · ");
+          const badge = document.createElement("span");
+          badge.className = `charge-mode ${mode.toLowerCase()}`;
+          badge.textContent = `Charge: ${mode}`;
+          node.prepend(badge, document.createTextNode(" "));
+        });
+      });
+    </script>
+    <script defer>
+      document.addEventListener("DOMContentLoaded", () => {
+        const walker = document.createTreeWalker(
+          document.body,
+          NodeFilter.SHOW_TEXT,
+          {
+            acceptNode: (n) =>
+              ["SCRIPT", "STYLE"].includes(n.parentElement?.tagName)
+                ? NodeFilter.FILTER_REJECT
+                : NodeFilter.FILTER_ACCEPT,
+          },
+        );
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        nodes.forEach((n) => {
+          n.nodeValue = n.nodeValue.replaceAll(
+            "No Request Slip",
+            "Unknown group",
+          );
+        });
+      });
+    </script>
+    <style>
+      .decision span {
+        display: none;
+      }
+    </style>
+    <style>
+      .payment-due {
+        display: inline-block;
+        margin-left: 5px;
+        padding: 3px 7px;
+        border-radius: 6px;
+        background: #fef3f2;
+        color: #b42318 !important;
+        font-weight: 800;
+      }
+    </style>
+    <style>
+      .manual-review-flag {
+        display: inline-block;
+        margin: 5px 0 0;
+        padding: 3px 7px;
+        border-radius: 999px;
+        background: #f4f3ff;
+        color: #5925dc;
+        font-size: 10px;
+        font-weight: 800;
+      }
+    </style>
+    <script defer>
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll(".member-top small").forEach((node) => {
+          const mode = node.querySelector(".charge-mode")?.textContent.trim();
+          const match = node.textContent.match(/Balance\s+₹([\d,.]+)/);
+          if (
+            mode !== "Charge: Paying" ||
+            !match ||
+            Number(match[1].replaceAll(",", "")) <= 0
+          )
+            return;
+          node.innerHTML = node.innerHTML.replace(
+            /Balance\s+₹[\d,.]+/,
+            (text) => `<span class="payment-due">${text} due</span>`,
+          );
+        });
+      });
+    </script>
+    <script defer>
+      document.addEventListener('DOMContentLoaded',()=>{const reviewed={{ dispatch_groups|map(attribute='has_manual_review')|list|tojson }},further={{ dispatch_groups|map(attribute='has_further_action')|list|tojson }};document.querySelectorAll('.queue-item').forEach((item,index)=>{if(!reviewed[index])return;const badge=document.createElement('span');badge.className='manual-review-flag';badge.textContent=further[index]?'Further action':'Manual approved';item.querySelector('.queue-open > div')?.append(badge);const panel=document.getElementById(item.dataset.id);panel?.querySelector('.detail-head > div')?.append(badge.cloneNode(true))})});
+    </script>
+    <style>
+      .approval-choice {
+        border: 0;
+        border-radius: 14px;
+        padding: 0;
+        box-shadow: 0 18px 50px rgba(16, 24, 40, 0.24);
+        width: min(420px, calc(100vw - 32px));
+      }
+      .approval-choice::backdrop {
+        background: rgba(16, 24, 40, 0.42);
+      }
+      .approval-choice form {
+        padding: 22px;
+      }
+      .approval-choice h3 {
+        margin: 0 0 7px;
+      }
+      .approval-choice p {
+        margin: 0 0 18px;
+        color: #667085;
+      }
+      .approval-options {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+      .approval-options button {
+        border: 0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .approval-options .normal {
+        background: #eef4ff;
+        color: #175cd3;
+      }
+      .approval-options .further {
+        background: #f4f3ff;
+        color: #5925dc;
+      }
+      .approval-options .cancel {
+        background: #f2f4f7;
+        color: #344054;
+      }
+    </style>
+    <script defer>
+      document.addEventListener("DOMContentLoaded", () => {
+        const dialog = document.createElement("dialog");
+        dialog.className = "approval-choice";
+        dialog.innerHTML =
+          '<form method="dialog"><h3>Manual approval</h3><p>Select the action required for this patient.</p><div class="approval-options"><button class="cancel" value="cancel">Cancel</button><button class="normal" value="no_further_action">No Further Action</button><button class="further" value="further_action">Further Action</button></div></form>';
+        document.body.append(dialog);
+        let selectedForm = null;
+        async function approve(type) {
+          if (!selectedForm || type === "cancel") return;
+          const response = await fetch(
+              `${selectedForm.action}?approval_type=${type}`,
+              {
+                method: "POST",
+                headers: {
+                  "X-Requested-With": "XMLHttpRequest",
+                  Accept: "application/json",
+                },
+              },
+            ),
+            result = await response.json();
+          if (!response.ok || !result.ok) {
+            alert(result.message);
+            return;
+          }
+          const action = selectedForm.closest(".member-action"),
+            label =
+              type === "further_action" ? "Further action" : "Manual approved";
+          action.innerHTML = `<span class="approved">${label}</span> <a class="btn primary" target="_blank">View report</a>`;
+          action.querySelector("a").href = result.report_url;
+          if (typeof refreshBookingAvailability === "function")
+            refreshBookingAvailability(selectedForm.closest(".detail-panel"));
+        }
+        dialog.addEventListener("close", () => approve(dialog.returnValue));
+        window.openApprovalChoice = (form) => {
+          selectedForm = form;
+          dialog.showModal();
+        };
+        document.querySelectorAll(".manual-decision-form").forEach(
+          (form) =>
+            (form.onsubmit = (event) => {
+              event.preventDefault();
+              window.openApprovalChoice(form);
+            }),
+        );
+      });
+    </script>
+    <script defer>
+      document.addEventListener("DOMContentLoaded", () => {
+        function readyForm(action) {
+          return `<form class="partial-review-form" method="post" action="${action.replace("/wait", "/ready")}"><button class="btn primary">Ready to print</button></form>`;
+        }
+
+        function setQueuePartialBadge(panel, text) {
+          const item = document.querySelector(
+            `.queue-item[data-id="${panel.id}"]`,
+          );
+          const badges = item?.querySelector(".queue-badges");
+          if (!badges) return;
+          let badge = badges.querySelector(".partial-queue-badge");
+          if (!badge) {
+            badge = document.createElement("span");
+            badge.className = "partial-queue-badge";
+            badges.append(badge);
+          }
+          badge.textContent = text;
+          badge.className = `partial-queue-badge ${text === "Waiting" ? "wait" : "unseen"}`;
+        }
+
+        document.addEventListener("submit", async (event) => {
+          const form = event.target.closest(".partial-review-form");
+          if (!form) return;
+          event.preventDefault();
+          if (form.action.endsWith("/ready") && window.openApprovalChoice) {
+            window.openApprovalChoice(form);
+            return;
+          }
+          const response = await fetch(form.action, {
+              method: "POST",
+              headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                Accept: "application/json",
+              },
+            }),
+            result = await response.json();
+          if (!response.ok || !result.ok) {
+            alert(result.message);
+            return;
+          }
+          const action = form.closest(".member-action");
+          if (result.status === "wait") {
+            action.innerHTML = `<span class="partial-review-state wait">Wait</span> ${readyForm(form.action)}`;
+            setQueuePartialBadge(action.closest(".detail-panel"), "Waiting");
+            return;
+          }
+          action.innerHTML =
+            '<span class="approved">Manual approved</span> <a class="btn primary" target="_blank">View report</a>';
+          action.querySelector("a").href = result.report_url;
+          if (typeof refreshBookingAvailability === "function")
+            refreshBookingAvailability(action.closest(".detail-panel"));
+        });
+      });
+    </script>
+    {% macro receipt_link(patient) -%}{% if patient.charge_as|string == '1' %}<a
+      class="btn"
+      href="{{ url_for('view_patient_receipt', patient_id=patient.patient_id) }}"
+      target="_blank"
+      >{% if patient.receipt_cached %}View receipt{% elif patient.payment_due
+      %}Fetch receipt{% else %}Receipt loading{% endif %}</a
+    >{% endif %}{%- endmacro %} {% macro action(patient) -%}{% if
+    patient.report_printed %}<span class="printed-status">Printed</span>{{
+    receipt_link(patient) }}{% if patient.direct_report_url %}<a
+      class="btn primary"
+      href="{{ patient.direct_report_url }}"
+      target="_blank"
+      >View report</a
+    >{% endif %}{% elif patient.manual_approved_print %}<span class="approved"
+      >{{ 'Further action' if patient.manual_approval_type == 'further_action'
+      else 'Manual approved' }}</span
+    >{{ receipt_link(patient) }}{% if patient.direct_report_url %}<a
+      class="btn primary"
+      href="{{ patient.direct_report_url }}"
+      target="_blank"
+      >View report</a
+    >{% endif %}{% elif patient.needs_partial_review and
+    patient.partial_review_status in ['unseen', 'wait'] %}<span
+      class="partial-review-state {{ patient.partial_review_status }}"
+      >{{ 'Unseen' if patient.partial_review_status == 'unseen' else 'Wait'
+      }}</span
+    >{{ receipt_link(patient) }}{% if patient.partial_review_status == 'unseen'
+    %}
+    <form
+      class="partial-review-form"
+      method="post"
+      action="{{ url_for('partial_review_decision', patient_id=patient.patient_id, decision='wait') }}"
+    >
+      <button class="btn">Wait</button>
+    </form>
+    {% endif %}
+    <form
+      class="partial-review-form"
+      method="post"
+      action="{{ url_for('partial_review_decision', patient_id=patient.patient_id, decision='ready') }}"
+    >
+      <button class="btn primary">Ready to print</button>
+    </form>
+    {% elif patient.direct_report_url %}{{ receipt_link(patient) }}<a
+      class="btn primary"
+      href="{{ patient.direct_report_url }}"
+      target="_blank"
+      >View report</a
+    >{% elif not patient.tests and not patient.payment_due %}{{
+    receipt_link(patient) }}<span class="muted">No active tests</span>{% elif
+    patient.pending_tests > 0 or patient.payment_due %}{{ receipt_link(patient)
+    }}
+    <form
+      class="manual-decision-form"
+      method="post"
+      action="{{ url_for('manual_print_decision', patient_id=patient.patient_id, decision='approve') }}"
+    >
+      <button class="btn primary">Manual approve</button>
+    </form>
+    {% elif patient.can_access_report %}{{ receipt_link(patient) }}<span
+      class="muted"
+      >Report path unavailable</span
+    >{% else %}{{ receipt_link(patient) }}<span class="muted"
+      >Pending balance</span
+    >{% endif %}{%- endmacro %} {% macro test_tree(test, role='Booked test') -%}
+    <div
+      class="test-node {{ 'test-profile' if test.is_profile else '' }} {{ 'test-done' if test.is_completed else 'test-pending' }}"
+    >
+      <div class="test-node-main">
+        <span class="test-role">{{ role }}</span
+        ><span class="test-code">{{ test.code }}</span
+        ><strong>{{ test.name }}</strong
+        ><span class="test-state"
+          >{{ 'Completed' if test.is_completed else 'Pending' }}</span
+        >
+      </div>
+      {% if test.children %}
+      <details class="child-tests">
+        <summary>
+          {{ test.children|length }} direct child test{{ '' if
+          test.children|length==1 else 's' }}
+        </summary>
+        <div class="child-test-list">
+          {% for child in test.children %}{{ test_tree(child, 'Child profile' if
+          child.is_profile else 'Child test') }}{% endfor %}
+        </div>
+      </details>
+      {% endif %}
+    </div>
+    {%- endmacro %}
+    <style>
+      .batch {
+        position: sticky !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: 0;
+        margin-left: 240px;
+        min-height: 66px;
+        padding: 12px 28px !important;
+        background: #fff;
+        border-top: 1px solid #dfe3eb;
+        box-shadow: 0 -3px 12px rgba(16, 24, 40, 0.06);
+        z-index: 5;
+      }
+      .content {
+        padding-bottom: 24px !important;
+      }
+      @media (max-width: 1100px) {
+        .batch {
+          margin-left: 72px;
+        }
+      }
+      @media (max-width: 700px) {
+        .batch {
+          margin-left: 0;
+          padding: 10px 14px !important;
+        }
+      }
+    </style>
+    <style>
+      .detail-tabs {
+        display: none;
+      }
+      .printed-status {
+        display: inline-block;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: #ecfdf3;
+        color: #067647;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .status.printed {
+        background: #ecfdf3;
+        color: #067647;
+      }
+    </style>
+    <script defer>
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll(".detail-panel").forEach((panel) => {
+          const members = [...panel.querySelectorAll(".member")];
+          if (
+            !members.length ||
+            !members.every((member) => member.querySelector(".printed-status"))
+          )
+            return;
+          const item = document.querySelector(
+              `.queue-item[data-id="${panel.id}"]`,
+            ),
+            box = item?.querySelector(".booking-check");
+          if (box) {
+            box.disabled = false;
+          }
+          if (item) {
+            item.dataset.state = "printed";
+            item.dataset.manualFilter = "0";
+            item.querySelectorAll(".status").forEach((status) => {
+              status.textContent = "Printed";
+              status.className = "status printed";
+            });
+            const bar = item.querySelector(".progress");
+            if (bar) bar.classList.remove("partial");
+          }
+          panel.querySelectorAll(".detail-head .status").forEach((status) => {
+            status.textContent = "Printed";
+            status.className = "status printed";
+          });
+          const notice = panel.querySelector(".decision");
+          if (notice) {
+            notice.className = "decision decision-ready";
+            notice.innerHTML =
+              "<strong>This booking has already been printed</strong><span>You can select it again if a reprint is needed.</span>";
+          }
+        });
+      });
+    </script>
+    <script defer>
+      document.addEventListener("DOMContentLoaded", () => {
+        const links = document.querySelectorAll("aside nav button");
+        if (links[1])
+          links[1].onclick = () =>
+            (location.href = '{{ url_for("print_batches") }}');
+        if (links[2])
+          links[2].onclick = () =>
+            (location.href = '{{ url_for("scan_labels") }}');
+        if (links[3])
+          links[3].onclick = () =>
+            (location.href = '{{ url_for("printer_settings") }}');
+      });
+    </script>
+    <style>
+      .queue-item[hidden] {
+        display: none !important;
+      }
+    </style>
+    <style>
+      .test-bucket.completed.collapsed .flat-test-chips {
+        display: none;
+      }
+      .test-bucket.completed h4 {
+        cursor: pointer;
+        user-select: none;
+      }
+      .test-bucket.completed h4:hover {
+        text-decoration: underline;
+      }
+    </style>
+    <script defer>
+      document.addEventListener("DOMContentLoaded", () =>
+        setTimeout(() => {
+          document
+            .querySelectorAll(".test-bucket.completed")
+            .forEach((bucket) => {
+              const heading = bucket.querySelector("h4"),
+                count = bucket.querySelectorAll(".flat-test-chip").length;
+              if (!heading) return;
+              bucket.classList.add("collapsed");
+              heading.textContent = `Completed tests (${count}) — click to show`;
+              heading.onclick = () => {
+                const closed = bucket.classList.toggle("collapsed");
+                heading.textContent = closed
+                  ? `Completed tests (${count}) — click to show`
+                  : `Completed tests (${count}) — click to hide`;
+              };
+            });
+        }, 0),
+      );
+    </script>
+    <style>
+      .content {
+        padding-bottom: 94px;
+      }
+      .batch {
+        position: fixed !important;
+        left: 240px;
+        right: 0;
+        bottom: 0;
+        padding: 12px 28px !important;
+        background: rgba(255, 255, 255, 0.97);
+        border-top: 1px solid #dfe3eb;
+        box-shadow: 0 -5px 18px rgba(16, 24, 40, 0.08);
+        display: flex;
+        justify-content: flex-end;
+        z-index: 10;
+      }
+      .batch .btn {
+        box-shadow: none !important;
+      }
+      @media (max-width: 1100px) {
+        .batch {
+          left: 72px;
+        }
+      }
+      @media (max-width: 700px) {
+        .batch {
+          left: 0;
+          padding: 10px 14px !important;
+        }
+        .content {
+          padding-bottom: 82px;
+        }
+      }
+    </style>
+    <style>
+      .flat-test-buckets {
+        display: grid;
+        gap: 12px;
+      }
+      .test-bucket {
+        padding: 10px 12px;
+        border-radius: 8px;
+      }
+      .test-bucket h4 {
+        margin: 0 0 8px;
+        font-size: 12px;
+      }
+      .test-bucket.completed {
+        background: #f0fdf4;
+      }
+      .test-bucket.completed h4 {
+        color: #067647;
+      }
+      .test-bucket.pending {
+        background: #fff7f6;
+      }
+      .test-bucket.pending h4 {
+        color: #b42318;
+      }
+      .flat-test-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+      .flat-test-chip {
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .completed .flat-test-chip {
+        background: #dcfae6;
+        color: #067647;
+      }
+      .pending .flat-test-chip {
+        background: #ffebe8;
+        color: #b42318;
+      }
+    </style>
+    <script defer>
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll(".test-tree").forEach((tree) => {
+          const directNodes = [...tree.children].filter((node) =>
+              node.classList.contains("test-node"),
+            ),
+            completed = [],
+            pending = [];
+          function add(items, name) {
+            if (name && !items.includes(name)) items.push(name);
+          }
+          function testKey(name) {
+            return (name || "")
+              .toString()
+              .replace(/\*/g, "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .toLowerCase();
+          }
+          function collect(node) {
+            const name = node
+                .querySelector(":scope > .test-node-main strong")
+                ?.textContent.trim(),
+              list = node.querySelector(
+                ":scope > .child-tests > .child-test-list",
+              ),
+              children = list
+                ? [...list.children].filter((child) =>
+                    child.classList.contains("test-node"),
+                  )
+                : [];
+            if (!children.length)
+              return node.classList.contains("test-done")
+                ? { completed: [name], pending: [] }
+                : { completed: [], pending: [name] };
+            const result = children.map(collect),
+              done = result.flatMap((item) => item.completed),
+              waiting = result.flatMap((item) => item.pending);
+            if (!waiting.length) return { completed: [name], pending: [] };
+            if (!done.length) return { completed: [], pending: [name] };
+            return { completed: done, pending: waiting };
+          }
+          directNodes.map(collect).forEach((result) => {
+            result.pending.forEach((name) => add(pending, name));
+            result.completed.forEach((name) => add(completed, name));
+          });
+          const pendingKeys = new Set(pending.map(testKey));
+          for (let index = completed.length - 1; index >= 0; index--) {
+            if (pendingKeys.has(testKey(completed[index]))) completed.splice(index, 1);
+          }
+          if (!completed.length && !pending.length) return;
+          tree.className = "test-tree flat-test-buckets";
+          tree.replaceChildren();
+          [
+            ["pending", "Pending tests to resolve", pending],
+            ["completed", "Completed tests", completed],
+          ].forEach(([kind, title, items]) => {
+            if (!items.length) return;
+            const bucket = document.createElement("section");
+            bucket.className = `test-bucket ${kind}`;
+            const heading = document.createElement("h4");
+            heading.textContent = title;
+            const chips = document.createElement("div");
+            chips.className = "flat-test-chips";
+            items.forEach((name) => {
+              const chip = document.createElement("span");
+              chip.className = "flat-test-chip";
+              chip.textContent = name;
+              chips.append(chip);
+            });
+            bucket.append(heading, chips);
+            tree.append(bucket);
+          });
+        });
+      });
+    </script>
+    <style>
+      .member-tests {
+        display: block;
+      }
+      .test-summary {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+      .test-summary h4 {
+        margin: 0;
+      }
+      .test-tree {
+        display: grid;
+        gap: 8px;
+      }
+      .test-node {
+        border: 1px solid #e4e7ec;
+        border-left: 3px solid #f79009;
+        border-radius: 8px;
+        background: #fff;
+        padding: 9px 10px;
+      }
+      .test-node.test-done {
+        border-left-color: #12b76a;
+        background: #f7fffa;
+      }
+      .test-node.test-profile {
+        border-color: #d9d6fe;
+        border-left: 3px solid #7f56d9;
+        background: #fafaff;
+      }
+      .test-node-main {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 6px 8px;
+      }
+      .test-role {
+        border-radius: 4px;
+        background: #eaf2ff;
+        color: #175cd3;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        padding: 2px 5px;
+        text-transform: uppercase;
+      }
+      .test-profile > .test-node-main .test-role {
+        background: #f0e9ff;
+        color: #5925dc;
+      }
+      .test-code {
+        color: #667085;
+        font-family: Consolas, monospace;
+        font-size: 11px;
+      }
+      .test-node strong {
+        font-size: 12px;
+      }
+      .test-state {
+        border-radius: 999px;
+        background: #fff4e5;
+        color: #b54708;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 7px;
+      }
+      .test-done > .test-node-main .test-state {
+        background: #e8f8ee;
+        color: #067647;
+      }
+      .child-tests {
+        margin: 8px 0 0 10px;
+        border-left: 2px solid #d9d6fe;
+        padding-left: 10px;
+      }
+      .child-tests summary {
+        color: #5925dc;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .child-test-list {
+        display: grid;
+        gap: 7px;
+        margin-top: 7px;
+      }
+      .child-test-list .test-node {
+        background: #fff;
+      }
+      .child-test-list .test-node.test-done {
+        background: #f7fffa;
+      }
+      @media (max-width: 700px) {
+        .test-summary {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .test-node-main {
+          align-items: center;
+        }
+      }
+      .metrics {
+        gap: 16px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin: 2px 0 20px;
+      }
+      .metrics article {
+        min-height: 126px;
+        position: relative;
+        overflow: hidden;
+        padding: 19px 20px;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+        transition:
+          transform 0.18s ease,
+          box-shadow 0.18s ease;
+      }
+      .metrics article:before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        background: #98a2b3;
+      }
+      .metrics article:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgba(16, 24, 40, 0.09);
+      }
+      .metrics article span {
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+      .metrics article b {
+        font-size: 31px;
+        line-height: 1.1;
+        margin: 8px 0 6px;
+      }
+      .metrics article small {
+        max-width: 185px;
+      }
+      .metrics article:nth-child(2):before {
+        background: #2e90fa;
+      }
+      .metrics article:nth-child(3):before {
+        background: #7f56d9;
+      }
+      .metrics .attention:before {
+        background: #f79009;
+      }
+      .tabs {
+        gap: 12px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        margin-bottom: 18px;
+      }
+      .tabs button {
+        cursor: pointer;
+        position: relative;
+        min-height: 84px;
+        padding: 15px 16px;
+        text-align: left;
+        transition:
+          border-color 0.18s ease,
+          background 0.18s ease,
+          transform 0.18s ease;
+      }
+      .tabs button:hover {
+        border-color: #84adff;
+        background: #f8fbff;
+        transform: translateY(-1px);
+      }
+      .tabs button b {
+        font-size: 25px;
+        margin-top: 3px;
+      }
+      .tabs .active {
+        background: linear-gradient(135deg, #eef4ff, #f8fbff);
+        border-color: #84adff;
+        box-shadow: 0 5px 14px rgba(37, 99, 235, 0.1);
+      }
+      .tabs .active:after {
+        content: "Showing";
+        position: absolute;
+        right: 14px;
+        top: 14px;
+        color: #175cd3;
+        background: #dbeafe;
+        border-radius: 999px;
+        padding: 3px 8px;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      html,
+      body {
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+      .app,
+      main,
+      .content,
+      .layout,
+      .queue,
+      .detail,
+      .detail-panel,
+      .member,
+      .member-detail,
+      .test-tree,
+      .test-node {
+        min-width: 0;
+      }
+      .content {
+        width: 100%;
+        max-width: none;
+      }
+      .layout {
+        grid-template-columns: minmax(280px, 390px) minmax(0, 1fr);
+      }
+      .member-top > div,
+      .member-detail > div {
+        min-width: 0;
+      }
+      .member-top p,
+      .test-node strong {
+        overflow-wrap: anywhere;
+      }
+      .toolbar {
+        min-width: 0;
+      }
+      .toolbar input[name="q"] {
+        min-width: 120px;
+      }
+      @media (max-width: 1100px) {
+        .app {
+          grid-template-columns: 72px minmax(0, 1fr);
+        }
+        aside {
+          padding: 16px 10px;
+        }
+        .brand {
+          font-size: 0;
+        }
+        .brand:before {
+          content: "A";
+          font-size: 22px;
+        }
+        .brand small,
+        nav span,
+        .side-note {
+          display: none;
+        }
+        .content {
+          padding: 18px;
+        }
+        .layout {
+          grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+        }
+      }
+      @media (max-width: 820px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        .queue-list {
+          max-height: 320px;
+        }
+        .metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .tabs {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .tabs button {
+          padding: 12px;
+        }
+        .tabs .active:after {
+          display: none;
+        }
+      }
+      @media (max-width: 700px) {
+        .metrics {
+          grid-template-columns: 1fr;
+        }
+        .tabs {
+          grid-template-columns: 1fr;
+        }
+        .toolbar {
+          flex-wrap: wrap;
+        }
+        .toolbar input[name="q"],
+        .toolbar input.date,
+        .toolbar select,
+        .toolbar .btn {
+          width: 100%;
+          flex: 1 1 100%;
+        }
+        .metrics article {
+          min-height: 106px;
+        }
+        .tabs button {
+          min-height: 72px;
+        }
+        .test-summary {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .test-node-main {
+          align-items: center;
+        }
+        .detail-head,
+        .member-top {
+          gap: 10px;
+        }
+        .batch {
+          left: 14px;
+          right: 14px;
+        }
+        .batch .btn {
+          width: 100%;
+        }
+      }
+    </style>
+    <style>
+      .app {
+        display: grid !important;
+        grid-template-columns: 240px minmax(0, 1fr);
+      }
+      .app main {
+        min-width: 0;
+      }
+      .content {
+        padding: 16px 28px;
+      }
+      .metrics {
+        gap: 12px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin: 0 0 12px;
+      }
+      .metrics article {
+        min-height: 86px;
+        padding: 13px 16px;
+      }
+      .metrics article b {
+        font-size: 26px;
+        margin: 4px 0;
+      }
+      .metrics article small {
+        font-size: 11px;
+      }
+      .tabs {
+        gap: 10px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        margin-bottom: 12px;
+      }
+      .tabs button {
+        min-height: 64px;
+        padding: 10px 14px;
+      }
+      .tabs button b {
+        font-size: 21px;
+        margin-top: 0;
+      }
+      .tabs .active:after {
+        top: 10px;
+        right: 10px;
+      }
+      .toolbar {
+        margin-bottom: 12px;
+      }
+      @media (max-width: 1100px) {
+        .app {
+          grid-template-columns: 72px minmax(0, 1fr) !important;
+        }
+      }
+      @media (max-width: 700px) {
+        .content {
+          padding: 12px;
+        }
+        .metrics article {
+          min-height: 78px;
+        }
+        .tabs button {
+          min-height: 60px;
+        }
+      }
+    </style>
+    <style>
+      .brand {
+        gap: 10px;
+      }
+      .brand img {
+        display: block;
+        width: 172px;
+        max-width: 100%;
+      }
+      .brand-title {
+        display: none;
+      }
+      @media (max-width: 1100px) {
+        .brand {
+          justify-content: center;
+          padding: 4px 0;
+        }
+        .brand:before {
+          display: none !important;
+        }
+        .brand img {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          object-fit: cover;
+          object-position: left center;
+        }
+      }
+      .metrics article,
+      .tabs button,
+      .toolbar,
+      .queue,
+      .detail-panel,
+      .member {
+        border-color: #dce8e7;
+        box-shadow: 0 12px 34px rgba(6, 65, 76, 0.06);
+      }
+      .metrics article:nth-child(2):before,
+      .metrics article:nth-child(3):before,
+      .tabs .active:after {
+        background: #58c49f;
+      }
+      .metrics .attention:before {
+        background: #c86b1f;
+      }
+      .tabs button:hover {
+        border-color: rgba(88, 196, 159, 0.72);
+        background: #f4fffb;
+      }
+      .tabs .active {
+        background: linear-gradient(135deg, #eefaf6, #ffffff);
+        border-color: rgba(88, 196, 159, 0.72);
+        color: #06414c;
+        box-shadow: 0 8px 18px rgba(15, 107, 120, 0.1);
+      }
+      .tabs .active:after {
+        color: #06414c;
+      }
+      .batch {
+        border-top-color: #dce8e7 !important;
+        box-shadow: 0 -8px 24px rgba(6, 65, 76, 0.08) !important;
+      }
+      .home-top {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 22px;
+        margin: 0 0 12px;
+      }
+      .home-top h1 {
+        color: #0f3b4a;
+        font-family: Fraunces, Georgia, serif;
+        font-size: 26px;
+        font-weight: 600;
+        line-height: 1.1;
+        margin: 0 18px 0 0;
+      }
+      .home-stat {
+        align-items: baseline;
+        color: #5b7580;
+        display: flex;
+        font-size: 14px;
+        gap: 8px;
+      }
+      .home-stat b {
+        color: #0f3b4a;
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .home-stat.warn b {
+        color: #8a5a00;
+      }
+      .content {
+        font-family: "Hanken Grotesk", Inter, Segoe UI, Arial, sans-serif;
+      }
+      .app {
+        background: #f1f6f5;
+      }
+      aside {
+        background: #06222a !important;
+        color: #cfe4e3;
+        gap: 22px;
+        padding: 20px 16px !important;
+      }
+      .brand {
+        background: #fff;
+        border-radius: 12px;
+        min-height: 0;
+        padding: 10px 12px !important;
+      }
+      .brand img {
+        filter: none;
+        width: 100% !important;
+      }
+      nav {
+        gap: 4px;
+      }
+      nav button {
+        align-items: center;
+        border-radius: 10px;
+        color: #cfe4e3;
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 12px;
+      }
+      nav button.active,
+      nav button:hover {
+        background: #12404b;
+        box-shadow: inset 3px 0 0 #58c3a1;
+        color: #fff;
+      }
+      nav b {
+        background: rgba(255, 255, 255, 0.11);
+        border-radius: 20px;
+        color: #fff;
+        float: none;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 1px 9px;
+      }
+      .user-panel {
+        border-top: 1px solid rgba(255, 255, 255, 0.13);
+        margin-top: auto;
+        padding: 16px 0 0;
+      }
+      .user-panel span {
+        color: #8fb0b3;
+      }
+      .user-panel strong {
+        color: #fff;
+        font-weight: 600;
+      }
+      .user-panel a {
+        border: 1px solid rgba(255, 255, 255, 0.23);
+        border-radius: 8px;
+        color: #fff;
+        display: inline-block;
+        padding: 5px 10px;
+        width: max-content;
+      }
+      .side-note {
+        display: none;
+      }
+      .metrics {
+        display: flex !important;
+        gap: 22px;
+        margin: -4px 0 10px;
+      }
+      .metrics article {
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        min-height: 0 !important;
+        overflow: visible;
+        padding: 0 !important;
+      }
+      .metrics article:before {
+        display: none;
+      }
+      .metrics article span,
+      .metrics article small {
+        color: #5b7580;
+        display: inline;
+        font-size: 14px;
+      }
+      .metrics article small {
+        display: none;
+      }
+      .metrics article b {
+        color: #0f3b4a;
+        display: inline;
+        font-size: 22px;
+        margin: 0 7px 0 0;
+      }
+      .metrics .attention b {
+        color: #8a5a00;
+      }
+      .tabs {
+        background: #fff;
+        border: 1px solid #dbe6e8;
+        border-radius: 12px;
+        display: flex !important;
+        gap: 4px;
+        grid-template-columns: none !important;
+        margin-bottom: 12px;
+        padding: 4px;
+      }
+      .tabs button {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-radius: 9px;
+        color: #5b7580;
+        display: flex;
+        font-weight: 600;
+        gap: 8px;
+        min-height: 0;
+        padding: 8px 14px;
+      }
+      .tabs button b {
+        background: #eaeff0;
+        border-radius: 20px;
+        color: #56696f;
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        margin: 0;
+        padding: 1px 8px;
+      }
+      .tabs button:hover {
+        background: #eaeff0;
+        border: 0;
+        transform: none;
+      }
+      .tabs .active {
+        background: #12505f;
+        border: 0;
+        box-shadow: none;
+        color: #fff;
+      }
+      .tabs .active b {
+        background: rgba(255, 255, 255, 0.19);
+        color: #fff;
+      }
+      .tabs .active:after {
+        display: none;
+      }
+      .toolbar {
+        align-items: end;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 0 0 12px;
+        padding: 0;
+      }
+      .toolbar input,
+      .toolbar select {
+        background: #fff;
+        border: 1.5px solid #dbe6e8;
+        border-radius: 10px;
+        color: #0f3b4a;
+        height: 42px;
+        padding: 0 12px;
+      }
+      .toolbar input[name="q"] {
+        min-width: 280px;
+      }
+      .toolbar .btn {
+        height: 42px;
+        padding: 0 16px;
+      }
+      .layout {
+        gap: 16px;
+        grid-template-columns: 380px minmax(0, 1fr);
+      }
+      .queue,
+      .detail {
+        background: #fff;
+        border: 1px solid #dbe6e8;
+        border-radius: 16px;
+        box-shadow: none;
+      }
+      .queue-head {
+        align-items: center;
+        border-bottom: 1px solid #dbe6e8;
+        padding: 14px 16px;
+      }
+      .queue-head h2 {
+        color: #0f3b4a;
+        font-size: 16px;
+        font-weight: 700;
+      }
+      .queue-head small,
+      .queue-head span {
+        color: #5b7580;
+        font-size: 13px;
+      }
+      .queue-item {
+        border-bottom-color: #dbe6e8;
+        border-left: 4px solid transparent;
+        display: grid;
+        grid-template-columns: 22px 1fr;
+        gap: 4px 10px;
+        padding: 12px 16px;
+      }
+      .queue-item:hover {
+        background: #eaeff0;
+      }
+      .queue-item.selected {
+        background: #e9f7f2;
+        border-left-color: #1f9d78;
+        box-shadow: none;
+      }
+      .queue-item label {
+        grid-row: 1 / span 4;
+        padding: 3px 0 0;
+      }
+      .queue-item input[type="checkbox"] {
+        accent-color: #12505f;
+        height: 17px;
+        width: 17px;
+      }
+      .queue-open {
+        padding: 0;
+      }
+      .queue-open > div {
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .queue-open p {
+        color: #5b7580;
+        font-size: 13px;
+        margin: 7px 0;
+      }
+      .queue-open small {
+        color: #5b7580;
+        font-size: 12px;
+      }
+      .progress {
+        height: 5px;
+        margin: 4px 0;
+      }
+      .status {
+        font-size: 12px;
+        padding: 2px 10px;
+      }
+      .review,
+      .partial {
+        background: #fff4d9;
+        color: #8a5a00;
+      }
+      .ready {
+        background: #e4f6ee;
+        color: #0d6b4f;
+      }
+      .not-complete {
+        background: #fdecea;
+        color: #b3261e;
+      }
+      .printed {
+        background: #eaeff0;
+        color: #56696f;
+      }
+      .detail {
+        min-height: 0;
+      }
+      .detail-head {
+        align-items: flex-start;
+        border-bottom: 1px solid #dbe6e8;
+        gap: 16px;
+        padding: 20px 24px;
+      }
+      .detail-head h2 {
+        color: #0f3b4a;
+        font-family: Fraunces, Georgia, serif;
+        font-size: 26px;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      .detail-head p,
+      .detail-head small {
+        color: #5b7580;
+      }
+      .decision {
+        border: 0;
+        border-radius: 12px;
+        margin: 16px 24px;
+        padding: 14px 16px;
+      }
+      .body {
+        padding: 0 24px 24px;
+      }
+      .member {
+        border-color: #dbe6e8;
+        border-radius: 14px;
+      }
+      .member-top,
+      .member-detail {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+      .member-detail {
+        background: transparent;
+        border-top-color: #dbe6e8;
+      }
+      .btn {
+        border: 1.5px solid #dbe6e8;
+        border-radius: 10px;
+        font-weight: 700;
+      }
+      .primary {
+        background: linear-gradient(90deg, #12505f, #1f9d78) !important;
+        border: 0 !important;
+      }
+      .batch {
+        background: #fff !important;
+        border-top: 1px solid #dbe6e8 !important;
+      }
+      @media (max-width: 1000px) {
+        .app {
+          grid-template-columns: 1fr !important;
+        }
+        aside {
+          display: none;
+        }
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        .queue-list {
+          max-height: 70vh;
+        }
+        .batch {
+          left: 0 !important;
+        }
+      }
+      @media (prefers-color-scheme: dark) {
+        .app {
+          background: #0b1a1f;
+        }
+        .content,
+        .home-top h1,
+        .home-stat b,
+        .metrics article b,
+        .queue-head h2,
+        .detail-head h2,
+        .toolbar input,
+        .toolbar select {
+          color: #e7f2f1;
+        }
+        .home-stat,
+        .metrics article span,
+        .queue-head small,
+        .queue-head span,
+        .queue-open p,
+        .queue-open small,
+        .detail-head p,
+        .detail-head small {
+          color: #97b0b5;
+        }
+        .tabs,
+        .toolbar input,
+        .toolbar select,
+        .queue,
+        .detail,
+        .batch {
+          background: #10262d !important;
+          border-color: #25454d !important;
+        }
+        .tabs button b,
+        .queue-item:hover {
+          background: #1c3238;
+          color: #a9c0c4;
+        }
+        .queue-item {
+          border-bottom-color: #25454d;
+        }
+        .queue-item.selected {
+          background: #14362f;
+        }
+        .member {
+          background: #10262d;
+          border-color: #25454d;
+        }
+      }
+      .app {
+        background: #0b1a1f !important;
+      }
+      .content,
+      .home-top h1,
+      .home-stat b,
+      .metrics article b,
+      .queue-head h2,
+      .detail-head h2,
+      .section-title h3,
+      .member-top strong,
+      .member-detail h4,
+      .toolbar input,
+      .toolbar select {
+        color: #e7f2f1 !important;
+      }
+      .home-stat,
+      .metrics article span,
+      .queue-head small,
+      .queue-head span,
+      .queue-open p,
+      .queue-open small,
+      .detail-head p,
+      .detail-head small,
+      .section-title span,
+      .member-top p,
+      .member-top small,
+      .muted {
+        color: #97b0b5 !important;
+      }
+      .tabs,
+      .toolbar input,
+      .toolbar select,
+      .queue,
+      .detail,
+      .batch,
+      .member,
+      .loading div {
+        background: #10262d !important;
+        border-color: #25454d !important;
+      }
+      .toolbar input::placeholder {
+        color: #799399;
+      }
+      .tabs button {
+        color: #97b0b5;
+      }
+      .tabs button b,
+      .queue-item:hover {
+        background: #1c3238 !important;
+        color: #a9c0c4 !important;
+      }
+      .tabs .active {
+        background: linear-gradient(90deg, #12505f, #1f9d78) !important;
+        color: #fff !important;
+      }
+      .tabs .active b {
+        background: rgba(255, 255, 255, 0.2) !important;
+        color: #fff !important;
+      }
+      .queue-head,
+      .detail-head,
+      .member-detail,
+      .member,
+      .queue-item,
+      .label-summary {
+        border-color: #25454d !important;
+      }
+      .queue-item.selected {
+        background: #14362f !important;
+      }
+      .queue-open strong,
+      .member-top strong {
+        color: #f4fbfa;
+      }
+      .btn {
+        background: #10262d;
+        border-color: #25454d;
+        color: #e7f2f1;
+      }
+      .btn:hover {
+        background: #14323a;
+      }
+      .primary {
+        background: linear-gradient(90deg, #12505f, #1f9d78) !important;
+        color: #fff !important;
+      }
+      .review,
+      .partial {
+        background: #3b2f10 !important;
+        color: #ffd479 !important;
+      }
+      .ready,
+      .decision-ready,
+      .chip.clear,
+      .test-bucket.completed,
+      .completed .flat-test-chip {
+        background: #12362b !important;
+        color: #7fe0bb !important;
+      }
+      .not-complete,
+      .chip.pending,
+      .test-bucket.pending,
+      .pending .flat-test-chip {
+        background: #3a1714 !important;
+        color: #ffb4ab !important;
+      }
+      .printed,
+      .chip,
+      .panel-company,
+      .charge-mode {
+        background: #1c3238 !important;
+        color: #a9c0c4 !important;
+      }
+      .decision {
+        background: #3b2f10 !important;
+        color: #ffd479 !important;
+      }
+      .decision span {
+        color: inherit !important;
+      }
+      .label-summary {
+        background: #12362b !important;
+        color: #7fe0bb !important;
+      }
+      .label-summary span {
+        color: #b7d3ce !important;
+      }
+      .flash.success {
+        background: #12362b;
+        color: #7fe0bb;
+      }
+      .flash.error {
+        background: #3a1714;
+        color: #ffb4ab;
+      }
+      .home-top {
+        align-items: stretch;
+        background: linear-gradient(135deg, #0c242b, #0f2f37);
+        border: 1px solid #25454d;
+        border-radius: 18px;
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
+        gap: 12px;
+        margin: 0 0 16px;
+        padding: 16px 18px;
+      }
+      .home-top h1 {
+        align-items: center;
+        display: flex;
+        flex: 1 1 260px;
+        font-family: "Hanken Grotesk", Inter, Segoe UI, Arial, sans-serif;
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin: 0;
+      }
+      .home-stat {
+        background: rgba(255, 255, 255, 0.045);
+        border: 1px solid rgba(191, 242, 226, 0.12);
+        border-radius: 14px;
+        flex: 0 0 190px;
+        flex-direction: column;
+        gap: 3px;
+        justify-content: center;
+        padding: 11px 14px;
+        text-transform: capitalize;
+      }
+      .home-stat b {
+        display: block;
+        font-size: 26px;
+        line-height: 1;
+      }
+      .home-stat.warn {
+        border-color: rgba(255, 212, 121, 0.22);
+      }
+      .home-stat.warn b {
+        color: #ffd479 !important;
+      }
+      .metrics {
+        display: none !important;
+      }
+      .detail-head h2,
+      .queue-open strong,
+      .member-top strong,
+      .section-title h3 {
+        font-family: "Hanken Grotesk", Inter, Segoe UI, Arial, sans-serif !important;
+        letter-spacing: -0.01em;
+      }
+      .detail-head h2 {
+        font-size: 25px;
+        font-weight: 800;
+      }
+      .queue-open strong {
+        font-size: 15px;
+        font-weight: 800;
+      }
+      .queue-open p,
+      .queue-open small,
+      .detail-head p,
+      .detail-head small,
+      .member-top p,
+      .member-top small {
+        color: #b8cdd0 !important;
+        font-weight: 500;
+      }
+      .toolbar input,
+      .toolbar select {
+        color: #f1fbfa !important;
+        font-weight: 650;
+      }
+      .toolbar input::placeholder {
+        color: #95b2b6 !important;
+        font-weight: 500;
+      }
+      .queue,
+      .detail {
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16);
+      }
+      .decision strong,
+      .test-bucket h4,
+      .flat-test-chip,
+      .status {
+        font-weight: 800;
+      }
+      @media (max-width: 760px) {
+        .home-top {
+          padding: 14px;
+        }
+        .home-top h1 {
+          flex-basis: 100%;
+          font-size: 24px;
+        }
+        .home-stat {
+          flex: 1 1 150px;
+        }
+      }
+      /* Restore UI from before the reference/dark redesign. UI only. */
+      body,
+      .app,
+      main,
+      .content {
+        background: #f5f7fb !important;
+        color: #172033 !important;
+        font-family: Inter, Segoe UI, Arial, sans-serif !important;
+      }
+      aside {
+        background: #101828 !important;
+        border-right: 0 !important;
+        color: #d0d5dd !important;
+        gap: 24px !important;
+        padding: 20px 14px !important;
+      }
+      .brand {
+        align-items: center !important;
+        background: #fff !important;
+        border-radius: 12px !important;
+        display: flex !important;
+        justify-content: center !important;
+        min-height: 0 !important;
+        padding: 10px 12px !important;
+      }
+      .brand img {
+        display: block !important;
+        filter: none !important;
+        max-height: 54px !important;
+        max-width: 176px !important;
+        object-fit: contain !important;
+        width: 100% !important;
+      }
+      nav button {
+        background: transparent !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+        color: #d0d5dd !important;
+        display: block !important;
+        padding: 11px 12px !important;
+      }
+      nav button.active,
+      nav button:hover {
+        background: #1d2939 !important;
+        box-shadow: none !important;
+        color: #fff !important;
+      }
+      nav b {
+        background: transparent !important;
+        color: inherit !important;
+        float: right !important;
+        padding: 0 !important;
+      }
+      .user-panel {
+        border-top: 1px solid #344054 !important;
+        margin-top: -8px !important;
+        padding: 14px 10px 0 !important;
+      }
+      .user-panel span {
+        color: #98a2b3 !important;
+      }
+      .user-panel strong {
+        color: #fff !important;
+      }
+      .user-panel a {
+        border: 0 !important;
+        color: #dbeafe !important;
+        padding: 0 !important;
+      }
+      .side-note {
+        display: block !important;
+      }
+      .home-top {
+        align-items: center !important;
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        gap: 22px !important;
+        margin: 0 0 16px !important;
+        padding: 0 !important;
+      }
+      .home-top h1 {
+        color: #172033 !important;
+        font-family: Inter, Segoe UI, Arial, sans-serif !important;
+        font-size: 24px !important;
+        font-weight: 800 !important;
+      }
+      .home-stat {
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        color: #667085 !important;
+        display: flex !important;
+        flex: 0 1 auto !important;
+        flex-direction: row !important;
+        gap: 8px !important;
+        padding: 0 !important;
+      }
+      .home-stat b {
+        color: #172033 !important;
+        display: inline !important;
+        font-size: 22px !important;
+      }
+      .home-stat.warn b {
+        color: #a15c00 !important;
+      }
+      .metrics {
+        display: none !important;
+      }
+      .metrics article,
+      .tabs button,
+      .toolbar,
+      .queue,
+      .detail,
+      .member,
+      .member-detail,
+      .loading div {
+        background: #fff !important;
+        border-color: #e5e7eb !important;
+        box-shadow: none !important;
+        color: #172033 !important;
+      }
+      .metrics article b,
+      .queue-head h2,
+      .detail-head h2,
+      .section-title h3,
+      .queue-open strong,
+      .member-top strong,
+      .member-detail h4,
+      .toolbar input,
+      .toolbar select {
+        color: #172033 !important;
+        font-family: Inter, Segoe UI, Arial, sans-serif !important;
+      }
+      .metrics article span,
+      .metrics article small,
+      .queue-head small,
+      .queue-head span,
+      .queue-open p,
+      .queue-open small,
+      .detail-head p,
+      .detail-head small,
+      .section-title span,
+      .member-top p,
+      .member-top small,
+      .muted {
+        color: #667085 !important;
+      }
+      .tabs {
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        display: grid !important;
+        grid-template-columns: repeat(5, 1fr) !important;
+        gap: 10px !important;
+        padding: 0 !important;
+      }
+      .tabs button {
+        border: 1px solid #e5e7eb !important;
+        border-radius: 10px !important;
+        color: #667085 !important;
+        display: block !important;
+        min-height: 72px !important;
+        padding: 12px 14px !important;
+      }
+      .tabs button b {
+        background: transparent !important;
+        color: #172033 !important;
+        display: block !important;
+        font-size: 22px !important;
+        padding: 0 !important;
+      }
+      .tabs .active {
+        background: #eef4ff !important;
+        border-color: #84adff !important;
+        color: #1d4ed8 !important;
+      }
+      .tabs .active:after {
+        display: none !important;
+      }
+      .toolbar {
+        border: 1px solid #e5e7eb !important;
+        border-radius: 12px !important;
+        padding: 12px !important;
+      }
+      .toolbar input,
+      .toolbar select {
+        background: #fff !important;
+        border: 1px solid #d0d5dd !important;
+        color: #172033 !important;
+        font-weight: 400 !important;
+      }
+      .toolbar input::placeholder {
+        color: #667085 !important;
+      }
+      .queue-item {
+        border-bottom-color: #e5e7eb !important;
+      }
+      .queue-item:hover {
+        background: #f8fafc !important;
+      }
+      .queue-item.selected {
+        background: #f0f6ff !important;
+        border-left-color: #2563eb !important;
+      }
+      .detail-head,
+      .queue-head,
+      .member-detail {
+        border-color: #e5e7eb !important;
+      }
+      .decision {
+        background: #fffaf0 !important;
+        border: 1px solid #fedf89 !important;
+        color: #172033 !important;
+      }
+      .btn {
+        background: #fff !important;
+        border-color: #d0d5dd !important;
+        color: #172033 !important;
+      }
+      .primary {
+        background: #2563eb !important;
+        border-color: #2563eb !important;
+        color: #fff !important;
+      }
+      .batch {
+        background: #fff !important;
+        border-color: #e5e7eb !important;
+      }
+      /* Keep all content badges/chips light; sidebar can stay dark. */
+      .status,
+      .manual-review-flag,
+      .partial-queue-badge,
+      .label-queue-badge,
+      .partial-review-state,
+      .printed-status,
+      .chip,
+      .flat-test-chip,
+      .panel-company,
+      .charge-mode {
+        box-shadow: none !important;
+      }
+      .review,
+      .partial,
+      .partial-queue-badge.wait,
+      .partial-review-state.wait {
+        background: #fff7e6 !important;
+        color: #a15c00 !important;
+      }
+      .ready,
+      .decision-ready,
+      .chip.clear,
+      .test-bucket.completed,
+      .completed .flat-test-chip,
+      .label-queue-badge,
+      .label-summary {
+        background: #ecfdf3 !important;
+        color: #067647 !important;
+      }
+      .not-complete,
+      .chip.pending,
+      .test-bucket.pending,
+      .pending .flat-test-chip {
+        background: #fff1f0 !important;
+        color: #b42318 !important;
+      }
+      .printed {
+        background: #eff8ff !important;
+        color: #175cd3 !important;
+      }
+      .manual-review-flag,
+      .partial-queue-badge.unseen,
+      .partial-review-state.unseen {
+        background: #eff8ff !important;
+        color: #175cd3 !important;
+      }
+      .chip,
+      .panel-company,
+      .charge-mode {
+        background: #eef4ff !important;
+        color: #1d4ed8 !important;
+      }
+      .charge-mode.credit {
+        background: #f4f3ff !important;
+        color: #5925dc !important;
+      }
+      .charge-mode.free {
+        background: #ecfdf3 !important;
+        color: #067647 !important;
+      }
+      .decision {
+        background: #fffaf0 !important;
+        border: 1px solid #fdb022 !important;
+        color: #172033 !important;
+      }
+      .decision span {
+        color: #8a4b00 !important;
+      }
+      .test-bucket {
+        border: 0 !important;
+      }
+      .test-bucket h4,
+      .flat-test-chip,
+      .status {
+        font-weight: 800 !important;
+      }
+      /* Readability pass: make compact operational text easier to scan. */
+      .queue-head small,
+      .queue-head span,
+      .queue-open p,
+      .queue-open small,
+      .detail-head p,
+      .detail-head small,
+      .section-title span,
+      .member-top p,
+      .member-top small,
+      .member-detail h4,
+      .muted,
+      .home-stat,
+      .toolbar input,
+      .toolbar select {
+        font-size: 14px !important;
+      }
+      .status,
+      .manual-review-flag,
+      .partial-queue-badge,
+      .partial-review-state,
+      .label-queue-badge,
+      .printed-status,
+      .chip,
+      .flat-test-chip,
+      .panel-company,
+      .charge-mode {
+        font-size: 12px !important;
+        line-height: 1.25 !important;
+      }
+      .queue-open strong {
+        font-size: 16px !important;
+      }
+      .member-top strong {
+        font-size: 16px !important;
+      }
+      .detail-head h2 {
+        font-size: 27px !important;
+      }
+    </style>
+    <div class="app">
+      <aside>
+        <div class="brand">
+          <img
+            src="{{ url_for('static', filename='img/dr-bhasins-lab-logo.png') }}"
+            alt="Dr Bhasin's Lab"
+          />
+        </div>
+        <nav>
+          <button class="active">Dispatch queue <b>{{ total }}</b></button
+          ><button>Print batches <b id="side-count">0</b></button
+          ><button>Scan labels</button
+          ><button>Printer settings</button>
+        </nav>
+        <div class="user-panel">
+          <span>Logged in</span>
+          <strong>{{ session.auth_user.name }}</strong>
+          <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+        <div class="side-note">
+          <strong>Fast path</strong>Review one booking group, then send a safe
+          batch to print.
+        </div>
+      </aside>
+      <main>
+        <section class="content">
+          {% with messages=get_flashed_messages(with_categories=true) %}{% for
+          category,message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}{% endwith %}
+          <div class="home-top">
+            <h1>Dispatch queue</h1>
+          </div>
+          <div class="metrics">
+            <article class="attention">
+              <span>Needs review</span><b>{{ needs_review_count }}</b
+              ><small>Groups with unavailable reports</small>
+            </article>
+            <article>
+              <span>Printed today</span><b>{{ printed_today_count }}</b
+              ><small>Successful report prints</small>
+            </article>
+            <article>
+              <span>Selected batch</span><b id="batch-count">0</b
+              ><small>Groups in the next run</small>
+            </article>
+          </div>
+          <div class="tabs">
+            <button class="active" type="button" data-completion-filter="all">
+              All groups <b>{{ total_groups }}</b></button
+            ><button type="button" data-completion-filter="manual">
+              Manual review / Partial complete
+              <b>{{ completion_counts.manual }}</b></button
+            ><button type="button" data-completion-filter="not-complete">
+              Not complete
+              <b>{{ completion_counts['not-complete'] }}</b></button
+            ><button type="button" data-completion-filter="ready">
+              Ready to print <b>{{ completion_counts.ready }}</b></button
+            ><button type="button" data-completion-filter="printed">
+              Printed <b>{{ completion_counts.printed }}</b>
+            </button>
+          </div>
+          <form class="toolbar" method="get">
+            <input
+              name="q"
+              value="{{ query }}"
+              placeholder="Search group, patient, ID, mobile or receipt"
+            /><input
+              class="date"
+              type="date"
+              name="booking_date"
+              value="{{ selected_date }}"
+            /><select name="review_status">
+              <option value="all">All review statuses</option>
+              <option value="unseen">Unseen only</option>
+              <option value="waiting">Waiting only</option></select
+            ><select name="print_status">
+              <option value="all">All print statuses</option>
+              <option value="not_printed">Not printed</option>
+              <option value="printed">Printed</option></select
+            ><button class="btn primary">Apply filters</button>
+          </form>
+          <div class="layout">
+            <section class="queue">
+              <div class="queue-head">
+                <div>
+                  <h2>Dispatch groups</h2>
+                  <small>Click a booking to review its patients</small>
+                </div>
+                <div class="queue-head-actions">
+                  <label class="select-all-bookings">
+                    <input id="select-all-bookings" type="checkbox" />
+                    <span>Select all</span>
+                  </label>
+                  <span class="queue-count">{{ dispatch_groups|length }} groups</span>
+                </div>
+              </div>
+              <div class="queue-list">
+                {% for group in dispatch_groups %}{% set p=group.patients[0] %}
+                <article
+                  class="queue-item {% if loop.first %}selected{% endif %}"
+                  data-id="g{{ loop.index0 }}"
+                  data-state="{{ group.completion_state }}"
+                  data-manual-filter="{{ '1' if group.completion_state == 'partial' else '0' }}"
+                >
+                  <label
+                    ><input
+                      class="booking-check"
+                      type="checkbox"
+                      data-patient-ids="{{ group.patient_ids }}"
+                      data-batch-printable="{{ '1' if group.batch_selectable else '0' }}"
+                    /></label
+                  ><button
+                    class="queue-open"
+                    data-open="g{{ loop.index0 }}"
+                    type="button"
+                  >
+                    <div>
+                      <strong>{{ group.slip_no or 'Unknown group' }}</strong>
+                      <span class="queue-badges">
+                        <span class="status {{ group.completion_state }}"
+                          >{{ { 'ready': 'Ready to print', 'partial': 'Partial
+                          complete', 'not-complete': 'Not complete', 'printed':
+                          'Printed' }[group.completion_state] }}</span
+                        >
+                        {% if group.partial_review_badge %}<span
+                          class="partial-queue-badge {{ 'wait' if group.partial_review_badge == 'Waiting' else 'unseen' }}"
+                          >{{ group.partial_review_badge }}</span
+                        >{% endif %}
+                        {% if group.label_badge %}<span class="label-queue-badge"
+                          >{{ group.label_badge }}</span
+                        >{% endif %}
+                      </span>
+                    </div>
+                    <p>
+                      {{ p.patient_name or 'Unnamed patient' }}{% if
+                      group.patients|length>1 %} + {{ group.patients|length-1
+                      }}{% endif %} · {{ p.delivery_label }}
+                    </p>
+                    <i class="progress {{ group.completion_state }}"></i
+                    ><small
+                      ><b
+                        >{{ group.patients|sum(attribute='pending_tests') }}</b
+                      >
+                      pending · {{
+                      group.patients|sum(attribute='completed_tests') }}
+                      complete · {{ group.patients|length }} patients</small
+                    >
+                  </button>
+                </article>
+                {% else %}
+                <div class="empty">No records matched.</div>
+                {% endfor %}
+              </div>
+            </section>
+            <section class="detail">
+              {% for group in dispatch_groups %}{% set p=group.patients[0] %}
+              <div
+                class="detail-panel {% if loop.first %}active{% endif %}"
+                id="g{{ loop.index0 }}"
+              >
+                <div class="detail-head">
+                  <div>
+                    <small>{{ group.slip_no or 'Unknown group' }}</small>
+                    <h2>
+                      {{ p.patient_name or 'Unnamed patient' }}{% if
+                      group.patients|length>1 %} + {{ group.patients|length-1
+                      }}{% endif %}
+                    </h2>
+                    <p>
+                      {{ group.patients|length }} patient{{ '' if
+                      group.patients|length==1 else 's' }} · {{ p.delivery_label
+                      }} · {{ p.company or 'No company' }}
+                    </p>
+                  </div>
+                  <span class="status {{ group.completion_state }}"
+                    >{{ { 'ready': 'Ready to print', 'partial': 'Partial
+                    complete', 'not-complete': 'Not complete', 'printed':
+                    'Printed' }[group.completion_state] }}</span
+                  >
+                </div>
+                {% if group.label %}
+                <div class="label-summary">
+                  <strong>{{ group.label_badge }}</strong>
+                  <span>
+                    {{ group.label.envelope_id }}
+                    {% if group.label.printed_at %} · printed {{ group.label.printed_at }}{% endif %}
+                    {% if group.label.reprint_count %} · reprints {{ group.label.reprint_count }}{% endif %}
+                  </span>
+                </div>
+                {% endif %}
+                <div class="detail-tabs">
+                  Decision · Print preview · Audit trail
+                </div>
+                <div
+                  class="decision {{ 'decision-ready' if group.all_printable else '' }}"
+                >
+                  <strong
+                    >{{ 'Ready for a complete print' if group.all_printable else
+                    'This group needs a decision' }}</strong
+                  ><span
+                    >{{ 'All patients in this booking have a report available.'
+                    if group.all_printable else 'Pending reports or unavailable
+                    paths are blocking this booking.' }}</span
+                  >
+                </div>
+                <div class="body">
+                  <div class="section-title">
+                    <h3>Patients in this dispatch group</h3>
+                    <span
+                      >{{ group.patients|sum(attribute='completed_tests') }}
+                      complete · {{
+                      group.patients|sum(attribute='pending_tests') }}
+                      pending</span
+                    >
+                  </div>
+                  {% for patient in group.patients %}
+                  <article class="member">
+                    <div class="member-top">
+                      <div>
+                        <strong
+                          >{{ patient.patient_name or 'Unnamed patient'
+                          }}</strong
+                        >
+                        <p>
+                          Patient ID {{ patient.patient_id }} · {{
+                          patient.mobile_no or 'No mobile' }} · {{
+                          patient.company or 'No company' }}
+                        </p>
+                      </div>
+                      <div>
+                        <strong>{{ patient.net|inr }}</strong
+                        ><small
+                          >{{ patient.charge_mode_label }} · Balance {{
+                          patient.balance|inr }}</small
+                        >
+                      </div>
+                    </div>
+                    <div class="member-detail member-tests">
+                      <div class="test-summary">
+                        <h4>Tests — {{ patient.tests|length }} booked</h4>
+                        <span class="muted"
+                          >{{ patient.completed_tests }} complete · {{
+                          patient.pending_tests }} pending</span
+                        >
+                      </div>
+                      <div class="test-tree">
+                        {% for test in patient.tests %}{{ test_tree(test,
+                        'Booked profile' if test.is_profile else 'Booked test')
+                        }}{% else %}<span class="muted">No active tests</span>{%
+                        endfor %}
+                      </div>
+                      <div class="member-action">{{ action(patient) }}</div>
+                    </div>
+                  </article>
+                  {% endfor %}
+                </div>
+              </div>
+              {% else %}
+              <div class="empty">Select filters to see groups.</div>
+              {% endfor %}
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+    <form
+      id="batch-print"
+      class="batch"
+      method="post"
+      action="{{ url_for('print_selected_bookings') }}"
+    >
+      <input id="batch-patient-ids" type="hidden" name="patient_ids" /><button
+        id="batch-button"
+        class="btn primary"
+        formaction="{{ url_for('print_selected_bookings') }}"
+        disabled
+      >
+        Print selected bookings
+      </button><button
+        id="label-button"
+        class="btn"
+        formaction="{{ url_for('print_labels') }}"
+        disabled
+      >
+        Print labels
+      </button>
+    </form>
+    <div id="loading" class="loading" hidden>
+      <div>
+        Printing selected bookings…<small
+          >Please wait while print jobs are sent.</small
+        >
+      </div>
+    </div>
+    <script>
+      const checks = document.querySelectorAll(".booking-check"),
+        selectAllBookings = document.getElementById("select-all-bookings"),
+        hidden = document.getElementById("batch-patient-ids"),
+        batch = document.getElementById("batch-button"),
+        labelButton = document.getElementById("label-button"),
+        date = document.querySelector("[name=booking_date]").value,
+        key = `courier-booking-selection:${date}`;
+      let selected;
+      try {
+        selected = new Set(JSON.parse(localStorage.getItem(key) || "[]"));
+      } catch (_) {
+        selected = new Set();
+      }
+      function visibleSelectableChecks() {
+        return [...checks].filter(
+          (check) => !check.disabled && !check.closest(".queue-item")?.hidden,
+        );
+      }
+      function refresh() {
+        const selectedChecks = [...checks].filter(
+          (check) => selected.has(check.dataset.patientIds) && !check.disabled,
+        );
+        const visibleChecks = visibleSelectableChecks();
+        const visibleSelectedCount = visibleChecks.filter((check) =>
+          selected.has(check.dataset.patientIds),
+        ).length;
+        hidden.value = selectedChecks
+          .map((check) => check.dataset.patientIds)
+          .join(";");
+        batch.disabled =
+          !selectedChecks.length ||
+          selectedChecks.some((check) => check.dataset.batchPrintable !== "1");
+        labelButton.disabled = !selectedChecks.length;
+        document.getElementById("batch-count").textContent =
+          selectedChecks.length;
+        document.getElementById("side-count").textContent =
+          selectedChecks.length;
+        const homeSelectedCount = document.getElementById(
+          "home-selected-count",
+        );
+        if (homeSelectedCount) homeSelectedCount.textContent = selectedChecks.length;
+        if (selectAllBookings) {
+          selectAllBookings.checked =
+            visibleChecks.length > 0 &&
+            visibleSelectedCount === visibleChecks.length;
+          selectAllBookings.indeterminate =
+            visibleSelectedCount > 0 &&
+            visibleSelectedCount < visibleChecks.length;
+          selectAllBookings.disabled = visibleChecks.length === 0;
+        }
+        localStorage.setItem(key, JSON.stringify([...selected]));
+      }
+      window.refreshBatchSelection = refresh;
+      checks.forEach((c) => {
+        const id = c.dataset.patientIds;
+        if (c.disabled) selected.delete(id);
+        else {
+          c.checked = selected.has(id);
+          c.onchange = () => {
+            c.checked ? selected.add(id) : selected.delete(id);
+            refresh();
+          };
+        }
+      });
+      selectAllBookings?.addEventListener("change", () => {
+        visibleSelectableChecks().forEach((check) => {
+          check.checked = selectAllBookings.checked;
+          if (selectAllBookings.checked) {
+            selected.add(check.dataset.patientIds);
+          } else {
+            selected.delete(check.dataset.patientIds);
+          }
+        });
+        refresh();
+      });
+      refresh();
+      document.getElementById("batch-print").onsubmit = (event) => {
+        batch.disabled = true;
+        labelButton.disabled = true;
+        if (event.submitter?.id === "label-button") {
+          document.querySelector("#loading div").firstChild.textContent =
+            "Printing selected labels…";
+        }
+        document.getElementById("loading").hidden = false;
+      };
+      document.querySelectorAll(".queue-open").forEach(
+        (b) =>
+          (b.onclick = () => {
+            const id = b.dataset.open;
+            document
+              .querySelectorAll(".queue-item")
+              .forEach((x) =>
+                x.classList.toggle("selected", x.dataset.id === id),
+              );
+            document
+              .querySelectorAll(".detail-panel")
+              .forEach((x) => x.classList.toggle("active", x.id === id));
+          }),
+      );
+    </script>
+    <script>
+      function refreshBookingAvailability(panel) {
+        const ready = [...panel.querySelectorAll(".member")].every((member) =>
+          member.querySelector(".member-action a[href]"),
+        );
+        if (!ready) return;
+        const item = document.querySelector(
+            `.queue-item[data-id="${panel.id}"]`,
+          ),
+          checkbox = item && item.querySelector(".booking-check");
+        if (item) {
+          item.dataset.state = "ready";
+          item.querySelectorAll(".status").forEach((node) => {
+            node.textContent = "Ready to print";
+            node.className = "status ready";
+          });
+          const progress = item.querySelector(".progress");
+          if (progress) progress.classList.remove("partial");
+        }
+        if (checkbox) checkbox.dataset.batchPrintable = "1";
+        panel.querySelectorAll(".detail-head .status").forEach((node) => {
+          node.textContent = "Ready to print";
+          node.className = "status ready";
+        });
+        const decision = panel.querySelector(".decision");
+        if (decision) {
+          decision.className = "decision decision-ready";
+          decision.innerHTML =
+            "<strong>Ready for a complete print</strong><span>All patients in this booking have a report available.</span>";
+        }
+      }
+    </script>
+    <script>
+      (() => {
+        const labels = {
+          all: "All groups",
+          manual: "Manual review / partial complete",
+          "not-complete": "Not complete",
+          ready: "Ready to print",
+          printed: "Printed",
+        };
+        const queue = [...document.querySelectorAll(".queue-item")];
+        const panels = [...document.querySelectorAll(".detail-panel")];
+        const tabs = document.querySelector(".tabs");
+        const queueHead = document.querySelector(".queue-head");
+
+        if (!tabs) return;
+
+        function applyCompletionFilter(state) {
+          const shown = queue.filter((item) => {
+            const visible =
+              state === "all" ||
+              item.dataset.state === state ||
+              (state === "manual" && item.dataset.manualFilter === "1");
+            item.hidden = !visible;
+            if (!visible) {
+              const checkbox = item.querySelector(".booking-check");
+              if (checkbox?.checked) checkbox.click();
+            }
+            return visible;
+          });
+          tabs
+            .querySelectorAll("button")
+            .forEach((button) =>
+              button.classList.toggle(
+                "active",
+                button.dataset.completionFilter === state,
+              ),
+            );
+          const first = shown[0];
+          queue.forEach((item) =>
+            item.classList.toggle("selected", item === first),
+          );
+          panels.forEach((panel) =>
+            panel.classList.toggle("active", panel.id === first?.dataset.id),
+          );
+          if (queueHead) {
+            queueHead.querySelector(".queue-count").textContent =
+              `${shown.length} groups`;
+            queueHead.querySelector("small").textContent =
+              state === "all"
+                ? "Click a booking to review its patients"
+                : `Showing ${labels[state].toLowerCase()} only`;
+          }
+          window.refreshBatchSelection?.();
+        }
+
+        tabs
+          .querySelectorAll("button")
+          .forEach((button) =>
+            button.addEventListener("click", () =>
+              applyCompletionFilter(button.dataset.completionFilter),
+            ),
+          );
+      })();
+    </script>
+  </body>
+</html>

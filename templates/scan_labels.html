@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scan labels · Dr Bhasin's Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f5f7fb;
+        color: #172033;
+        font:
+          14px/1.45 Inter,
+          Inter,
+          Segoe UI,
+          Arial,
+          sans-serif;
+      }
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr);
+      }
+      aside {
+        background: #101828;
+        color: #d0d5dd;
+        padding: 20px 14px;
+      }
+      .brand {
+        align-items: center;
+        background: #fff;
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        padding: 10px 12px;
+      }
+      .brand img {
+        display: block;
+        max-height: 54px;
+        max-width: 176px;
+        object-fit: contain;
+        width: 100%;
+      }
+      nav {
+        display: grid;
+        gap: 5px;
+        margin-top: 24px;
+      }
+      nav a {
+        border-radius: 8px;
+        color: #d0d5dd;
+        padding: 11px 12px;
+        text-decoration: none;
+      }
+      nav a.active,
+      nav a:hover {
+        background: #1d2939;
+        color: #fff;
+      }
+      .user-panel {
+        border-top: 1px solid #344054;
+        display: grid;
+        gap: 8px;
+        margin: 18px 10px 0;
+        padding-top: 14px;
+      }
+      .user-panel span {
+        color: #98a2b3;
+        font-size: 11px;
+      }
+      .user-panel strong {
+        color: #fff;
+      }
+      .user-panel a {
+        color: #dbeafe;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      main {
+        padding: 42px 28px;
+      }
+      .hero,
+      .scan-card,
+      .recent-card,
+      .stat {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+      }
+      .hero {
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        padding: 18px 20px;
+      }
+      h1 {
+        font-size: 22px;
+        line-height: 1.1;
+        margin: 0 0 5px;
+      }
+      p {
+        color: #667085;
+        margin: 0;
+      }
+      .stats {
+        display: flex;
+        gap: 12px;
+      }
+      .stat {
+        min-width: 150px;
+        padding: 12px 14px;
+      }
+      .stat b {
+        display: block;
+        font-size: 25px;
+      }
+      .stat span {
+        color: #667085;
+        font-size: 12px;
+      }
+      .scan-card {
+        margin-bottom: 16px;
+        padding: 18px;
+      }
+      label {
+        display: block;
+        font-weight: 800;
+        margin-bottom: 8px;
+      }
+      textarea {
+        background: #fff;
+        border: 1px solid #d0d5dd;
+        border-radius: 10px;
+        color: #172033;
+        font: inherit;
+        min-height: 150px;
+        padding: 14px;
+        resize: vertical;
+        width: 100%;
+      }
+      textarea::placeholder {
+        color: #667085;
+      }
+      textarea:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+        outline: 0;
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 12px;
+      }
+      .btn {
+        background: #fff;
+        border: 1px solid #d0d5dd;
+        border-radius: 10px;
+        color: #172033;
+        cursor: pointer;
+        font-weight: 800;
+        padding: 11px 16px;
+        text-decoration: none;
+      }
+      .primary {
+        background: #2563eb;
+        border: 0;
+        color: #fff;
+      }
+      .flash {
+        border-radius: 12px;
+        margin-bottom: 14px;
+        padding: 12px 14px;
+      }
+      .flash.success {
+        background: #d1fadf;
+        color: #05603a;
+      }
+      .flash.error {
+        background: #fee4e2;
+        color: #b42318;
+      }
+      .rejected-card {
+        background: #fff1f0;
+        border: 1px solid #fda29b;
+        border-radius: 12px;
+        color: #7a271a;
+        margin-bottom: 16px;
+        padding: 14px 16px;
+      }
+      .rejected-card strong {
+        display: block;
+        margin-bottom: 8px;
+      }
+      .rejected-card ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+      .rejected-card li {
+        margin: 4px 0;
+      }
+      .recent-card {
+        overflow: hidden;
+      }
+      .recent-head {
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        padding: 15px 18px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th,
+      td {
+        border-bottom: 1px solid #f0f2f5;
+        padding: 12px 14px;
+        text-align: left;
+      }
+      th {
+        background: #fcfcfd;
+        color: #667085;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      td {
+        color: #172033;
+      }
+      .muted {
+        color: #667085;
+      }
+      .badge {
+        border-radius: 999px;
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 3px 8px;
+      }
+      .verified {
+        background: #d1fadf;
+        color: #05603a;
+      }
+      .unknown {
+        background: #fee4e2;
+        color: #b42318;
+      }
+      .user-panel span,
+      .user-panel a,
+      .stat span,
+      .muted {
+        font-size: 14px;
+      }
+      .badge,
+      th {
+        font-size: 12px;
+      }
+      td,
+      textarea,
+      .btn {
+        font-size: 15px;
+      }
+      @media (max-width: 900px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+        aside {
+          display: none;
+        }
+        main {
+          padding: 18px;
+        }
+        .hero,
+        .stats {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside>
+        <div class="brand">
+          <img
+            src="{{ url_for('static', filename='img/dr-bhasins-lab-logo.png') }}"
+            alt="Dr Bhasin's Lab"
+          />
+        </div>
+        <nav>
+          <a href="{{ url_for('dashboard') }}">Dispatch queue</a>
+          <a href="{{ url_for('print_batches') }}">Print batches</a>
+          <a class="active" href="{{ url_for('scan_labels') }}">Scan labels</a>
+          <a href="{{ url_for('printer_settings') }}">Printer settings</a>
+        </nav>
+        <div class="user-panel">
+          <span>Logged in</span>
+          <strong>{{ session.auth_user.name }}</strong>
+          <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+      </aside>
+      <main>
+        {% with messages=get_flashed_messages(with_categories=true) %}{% for
+        category,message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}{% endwith %}
+        <section class="hero">
+          <div>
+            <h1>Scan labels</h1>
+            <p>Scan envelope IDs in one field. Save will verify them in bulk.</p>
+          </div>
+          <div class="stats">
+            <div class="stat"><b>{{ totals.total_count or 0 }}</b><span>Total scans</span></div>
+            <div class="stat"><b>{{ totals.verified_count or 0 }}</b><span>Verified</span></div>
+            <div class="stat"><b>{{ totals.unknown_count or 0 }}</b><span>Unknown</span></div>
+          </div>
+        </section>
+        <section class="scan-card">
+          <form method="post">
+            <label for="scan_ids">Envelope IDs</label>
+            <textarea
+              id="scan_ids"
+              name="scan_ids"
+              autofocus
+              placeholder="Scan labels here, comma separated: ENV-261007-0001, ENV-261007-0002"
+            ></textarea>
+            <div class="actions">
+              <button class="btn" type="button" id="clear-scans">Clear</button>
+              <button class="btn primary" type="submit">Save scanned labels</button>
+            </div>
+          </form>
+        </section>
+        {% if rejected_scans %}
+        <section class="rejected-card">
+          <strong>Rejected label IDs — not saved</strong>
+          <ul>
+            {% for item in rejected_scans %}
+            <li><b>{{ item.envelope_id }}</b> — {{ item.reason }}</li>
+            {% endfor %}
+          </ul>
+        </section>
+        {% endif %}
+        <section class="recent-card">
+          <div class="recent-head">
+            <strong>Recent scanned labels</strong>
+            <span class="muted">Last 200 records</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Envelope ID</th>
+                <th>Booking</th>
+                <th>Patient / recipient</th>
+                <th>Status</th>
+                <th>Scanned by</th>
+                <th>Scanned at</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for scan in scans %}
+              <tr>
+                <td><strong>{{ scan.envelope_id }}</strong></td>
+                <td>{{ scan.booking_label or '—' }}</td>
+                <td>{{ scan.recipient_name or '—' }}</td>
+                <td>
+                  <span class="badge {{ scan.status }}">{{ scan.status|title }}</span>
+                </td>
+                <td>{{ scan.scanned_by_name or '—' }}</td>
+                <td class="muted">{{ scan.scanned_at }}</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td class="muted" colspan="6">No labels scanned yet.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+    <script>
+      const scanInput = document.getElementById("scan_ids");
+      document.getElementById("clear-scans").onclick = () => {
+        scanInput.value = "";
+        scanInput.focus();
+      };
+      scanInput.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        const value = scanInput.value.trim();
+        if (value && !/[,\s]$/.test(value)) scanInput.value = `${value}, `;
+      });
+    </script>
+  </body>
+</html>
