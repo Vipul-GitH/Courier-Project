@@ -2316,6 +2316,24 @@
               <option value="printed">Printed</option></select
             ><button class="btn primary">Apply filters</button>
           </form>
+          <form
+            class="toolbar"
+            method="get"
+            action="{{ url_for('export_printed_labels') }}"
+          >
+            <span class="muted">Export labels Excel</span
+            ><input
+              class="date"
+              type="date"
+              name="from_date"
+              value="{{ selected_date }}"
+            /><input
+              class="date"
+              type="date"
+              name="to_date"
+              value="{{ selected_date }}"
+            /><button class="btn">Export Excel</button>
+          </form>
           <div class="layout">
             <section class="queue">
               <div class="queue-head">

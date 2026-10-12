@@ -8,8 +8,10 @@
       :root {
         --label-width: 99.1mm;
         --label-height: 67.7mm;
-        --page-margin-top: 13mm;
-        --page-margin-left: 5.9mm;
+        --label-box-width: 95.7mm;
+        --label-box-height: 64.5mm;
+        --page-margin-top: 11mm;
+        --page-margin-left: 0mm;
         --label-gap-x: 0mm;
         --label-gap-y: 0mm;
       }
@@ -66,6 +68,8 @@
         width: var(--label-width);
       }
       .label {
+        height: var(--label-box-height);
+        width: var(--label-box-width);
         border: 0.45mm solid #111;
         border-radius: 3mm;
         display: grid;
@@ -246,3 +250,16 @@
     {% endfor %}
   </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+

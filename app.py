@@ -1,5 +1,6 @@
 import os
 import hashlib
+import io
 import json
 import logging
 import re
@@ -9,10 +10,12 @@ import tempfile
 import threading
 import time
 import uuid
+import zipfile
 from collections import deque
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+from xml.sax.saxutils import escape as xml_escape
 from urllib.parse import quote
 
 import pymysql
@@ -934,6 +937,163 @@ def clean_join(parts, separator=", "):
     return separator.join(str(part).strip() for part in parts if str(part or "").strip())
 
 
+def label_report_id(patient):
+    """Return patient ID text for courier label; mark paying patients with cached receipts."""
+    patient_id = str(patient.get("patient_id") or "").strip()
+    is_paying = str(patient.get("charge_as") or "").strip() == "1"
+    has_receipt = bool(str(patient.get("receipt_cached_path") or "").strip())
+    return f"{patient_id}*" if patient_id and is_paying and has_receipt else patient_id
+
+
+def excel_column_name(index):
+    name = ""
+    while index:
+        index, remainder = divmod(index - 1, 26)
+        name = chr(65 + remainder) + name
+    return name
+
+
+def xlsx_inline_cell(value, row_index, column_index, style_id=None):
+    cell_ref = f"{excel_column_name(column_index)}{row_index}"
+    style_attr = f' s="{style_id}"' if style_id is not None else ""
+    text = "" if value is None else str(value)
+    return (
+        f'<c r="{cell_ref}" t="inlineStr"{style_attr}>'
+        f"<is><t>{xml_escape(text)}</t></is></c>"
+    )
+
+
+def build_simple_xlsx(headers, rows, column_widths=None, sheet_name="Sheet1"):
+    """Create a lightweight .xlsx without adding runtime dependencies."""
+    column_widths = column_widths or {}
+    sheet_rows = []
+    header_cells = [
+        xlsx_inline_cell(header, 1, index, style_id=1)
+        for index, header in enumerate(headers, start=1)
+    ]
+    sheet_rows.append(f'<row r="1">{"".join(header_cells)}</row>')
+    for row_index, row in enumerate(rows, start=2):
+        cells = [
+            xlsx_inline_cell(value, row_index, column_index)
+            for column_index, value in enumerate(row, start=1)
+        ]
+        sheet_rows.append(f'<row r="{row_index}">{"".join(cells)}</row>')
+    columns_xml = "".join(
+        f'<col min="{index}" max="{index}" width="{width}" customWidth="1"/>'
+        for index, width in column_widths.items()
+    )
+    max_column = excel_column_name(len(headers))
+    dimension = f"A1:{max_column}{max(len(rows) + 1, 1)}"
+    worksheet_xml = f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+ xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<dimension ref="{dimension}"/>
+<cols>{columns_xml}</cols>
+<sheetData>{"".join(sheet_rows)}</sheetData>
+</worksheet>'''
+    workbook_xml = f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+ xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets><sheet name="{xml_escape(sheet_name)}" sheetId="1" r:id="rId1"/></sheets>
+</workbook>'''
+    styles_xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
+<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
+<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>
+</styleSheet>'''
+    content_types_xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>'''
+    root_rels_xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>'''
+    workbook_rels_xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>'''
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", content_types_xml)
+        archive.writestr("_rels/.rels", root_rels_xml)
+        archive.writestr("xl/workbook.xml", workbook_xml)
+        archive.writestr("xl/_rels/workbook.xml.rels", workbook_rels_xml)
+        archive.writestr("xl/worksheets/sheet1.xml", worksheet_xml)
+        archive.writestr("xl/styles.xml", styles_xml)
+    output.seek(0)
+    return output.getvalue()
+
+
+def snapshot_value(snapshot, *keys):
+    """Return the first non-empty value from a possibly nested address snapshot."""
+    if not isinstance(snapshot, dict):
+        return ""
+    wanted = {str(key).lower() for key in keys}
+    stack = [snapshot]
+    while stack:
+        item = stack.pop(0)
+        if not isinstance(item, dict):
+            continue
+        for key, value in item.items():
+            if str(key).lower() in wanted and str(value or "").strip():
+                return value
+            if isinstance(value, dict):
+                stack.append(value)
+    return ""
+
+
+def clean_address_value(value):
+    value = str(value or "").strip()
+    value = re.sub(r"[_]+", " ", value)
+    value = re.sub(r"\s+", " ", value)
+    return value.strip(" ,-")
+
+
+def clean_floor_value(value):
+    value = clean_address_value(value)
+    if not value:
+        return ""
+    normalized = value.lower().replace(".", "")
+    floor_map = {
+        "g": "Ground Floor",
+        "gf": "Ground Floor",
+        "ground": "Ground Floor",
+        "ground f": "Ground Floor",
+        "ground floor": "Ground Floor",
+        "basement": "Basement",
+        "b": "Basement",
+        "lg": "Lower Ground Floor",
+        "lower ground": "Lower Ground Floor",
+        "lower ground floor": "Lower Ground Floor",
+        "first": "1st Floor",
+        "1": "1st Floor",
+        "1st": "1st Floor",
+        "1st floor": "1st Floor",
+        "second": "2nd Floor",
+        "2": "2nd Floor",
+        "2nd": "2nd Floor",
+        "2nd floor": "2nd Floor",
+        "third": "3rd Floor",
+        "3": "3rd Floor",
+        "3rd": "3rd Floor",
+        "3rd floor": "3rd Floor",
+    }
+    if normalized in floor_map:
+        return floor_map[normalized]
+    if "floor" not in normalized:
+        return f"Floor: {value}"
+    return value
+
+
 def address_from_snapshot(snapshot):
     if not snapshot:
         return ""
@@ -944,25 +1104,30 @@ def address_from_snapshot(snapshot):
             return snapshot.strip()
     if not isinstance(snapshot, dict):
         return ""
-    line1 = clean_join(
-        [
-            snapshot.get("house_flat_no"),
-            snapshot.get("floor_display") or snapshot.get("floor"),
-            snapshot.get("block_tower_no"),
-        ],
-        ", ",
-    )
-    line2 = clean_join(
-        [
-            snapshot.get("street_line") or snapshot.get("street_sector"),
-            snapshot.get("landmark"),
-            snapshot.get("colony_name"),
-        ],
-        ", ",
-    )
-    line3 = clean_join([snapshot.get("city"), snapshot.get("pincode")], " - ")
-    return clean_join([line1, line2, line3], "\n")
 
+    house = clean_address_value(
+        snapshot_value(snapshot, "house_flat_no", "house_no", "flat_no", "flat", "house", "address1")
+    )
+    floor = clean_floor_value(snapshot_value(snapshot, "floor_display", "floor", "floor_no", "floor_number"))
+    block = clean_address_value(
+        snapshot_value(snapshot, "block_tower_no", "block", "tower", "tower_no", "building", "building_name")
+    )
+    street = clean_address_value(
+        snapshot_value(snapshot, "street_line", "street_sector", "street", "sector", "lane", "address2")
+    )
+    landmark = clean_address_value(snapshot_value(snapshot, "landmark", "near_by", "nearby", "near"))
+    colony = clean_address_value(snapshot_value(snapshot, "colony_name", "colony", "area", "locality", "location"))
+    city = clean_address_value(snapshot_value(snapshot, "city", "city_name"))
+    pincode = clean_address_value(snapshot_value(snapshot, "pincode", "pin_code", "postal_code", "zip"))
+
+    line1 = clean_join([house, floor, block], ", ")
+    line2 = clean_join([street, landmark], ", ")
+    line3 = clean_join([colony], ", ")
+    line4 = clean_join([city, pincode], " - ")
+    formatted = clean_join([line1, line2, line3, line4], "\n")
+    if formatted:
+        return formatted
+    return clean_address_value(snapshot_value(snapshot, "address", "full_address", "address_line"))
 
 def lead_management_connection():
     return pymysql.connect(
@@ -1258,7 +1423,7 @@ def get_or_create_courier_envelope(patients):
                 envelope = cur.fetchone()
         conn.commit()
     envelope["patients"] = patients
-    envelope["report_ids"] = [str(patient["patient_id"]) for patient in patients]
+    envelope["report_ids"] = [label_report_id(patient) for patient in patients]
     envelope["barcode_svg"] = code128_b_svg(envelope["envelope_id"])
     envelope["address_missing"] = not bool(str(envelope.get("recipient_address") or "").strip())
     envelope["delivery_marker"] = delivery_marker or "?"
@@ -2416,7 +2581,8 @@ def selected_booking_groups_from_form():
         with conn.cursor() as cur:
             cur.execute(
                 f"""
-                SELECT patient_id, booking_date, patient_name, mobile_no, req_slip_no, delivery_mode
+                SELECT patient_id, booking_date, patient_name, mobile_no, req_slip_no, delivery_mode,
+                           charge_as, receipt_cached_path
                 FROM patients
                 WHERE patient_id IN ({placeholders})
                 """,
@@ -2490,6 +2656,95 @@ def print_labels():
     target_printer = label_printer or "Windows default printer"
     flash(f"{len(envelopes)} label(s) sent to {target_printer}.", "success")
     return redirect(request.referrer or url_for("dashboard"))
+
+
+@app.get("/export-printed-labels.xlsx")
+def export_printed_labels():
+    """Export one representative patient row for each printed/reprinted label."""
+    selected_date = request.args.get("booking_date", date.today().isoformat()).strip()
+    from_text = request.args.get("from_date", selected_date).strip() or selected_date
+    to_text = request.args.get("to_date", from_text).strip() or from_text
+    try:
+        from_date = datetime.strptime(from_text, "%Y-%m-%d").date()
+    except ValueError:
+        from_date = date.today()
+    try:
+        to_date = datetime.strptime(to_text, "%Y-%m-%d").date()
+    except ValueError:
+        to_date = from_date
+    if from_date > to_date:
+        from_date, to_date = to_date, from_date
+
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT envelope_id, booking_date, recipient_name, recipient_address,
+                       mobile_no, patient_ids
+                FROM courier_envelopes
+                WHERE status IN ('printed', 'reprinted')
+                  AND booking_date BETWEEN %s AND %s
+                ORDER BY booking_date, envelope_id
+                """,
+                [from_date, to_date],
+            )
+            envelopes = cur.fetchall()
+
+            representative_ids = []
+            for envelope in envelopes:
+                first_id = str(envelope.get("patient_ids") or "").split(",", 1)[0].strip()
+                if first_id.isdigit():
+                    representative_ids.append(int(first_id))
+
+            patients_by_id = {}
+            if representative_ids:
+                placeholders = ", ".join(["%s"] * len(representative_ids))
+                cur.execute(
+                    f"""
+                    SELECT patient_id, patient_name, mobile_no
+                    FROM patients
+                    WHERE patient_id IN ({placeholders})
+                    """,
+                    representative_ids,
+                )
+                patients_by_id = {int(row["patient_id"]): row for row in cur.fetchall()}
+
+    rows = []
+    for envelope in envelopes:
+        first_id_text = str(envelope.get("patient_ids") or "").split(",", 1)[0].strip()
+        first_id = int(first_id_text) if first_id_text.isdigit() else None
+        patient = patients_by_id.get(first_id) if first_id else None
+        booking_date = envelope.get("booking_date") or from_date
+        if isinstance(booking_date, datetime):
+            booking_date = booking_date.date()
+        date_text = booking_date.strftime("%d-%m-%Y") if hasattr(booking_date, "strftime") else str(booking_date)
+        rows.append(
+            [
+                date_text,
+                first_id_text,
+                patient.get("patient_name") if patient else envelope.get("recipient_name"),
+                patient.get("mobile_no") if patient and patient.get("mobile_no") else envelope.get("mobile_no"),
+                envelope.get("recipient_address") or "",
+                envelope.get("envelope_id"),
+            ]
+        )
+
+    headers = ["Date", "Patient ID", "Patient Name", "Mobile", "Father/Name", "Envelope ID"]
+    workbook = build_simple_xlsx(
+        headers,
+        rows,
+        column_widths={1: 12, 2: 14, 3: 24, 4: 15, 5: 120, 6: 20},
+        sheet_name="Printed Labels",
+    )
+    if from_date == to_date:
+        filename = f"printed-labels-{from_date.strftime('%Y%m%d')}.xlsx"
+    else:
+        filename = f"printed-labels-{from_date.strftime('%Y%m%d')}-{to_date.strftime('%Y%m%d')}.xlsx"
+    return Response(
+        workbook,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 def parse_scanned_envelope_ids(raw_text):

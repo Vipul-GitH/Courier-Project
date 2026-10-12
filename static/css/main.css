@@ -132,7 +132,11 @@ header p {
 .login-page {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.12), transparent 30%),
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(37, 99, 235, 0.12),
+      transparent 30%
+    ),
     var(--bg);
 }
 .login-shell {
@@ -668,7 +672,11 @@ header p {
 /* Login redesign only: two-column Dr Bhasin's Lab sign-in card. */
 .login-page {
   background:
-    radial-gradient(circle at 18% 18%, rgba(31, 157, 120, 0.16), transparent 28%),
+    radial-gradient(
+      circle at 18% 18%,
+      rgba(31, 157, 120, 0.16),
+      transparent 28%
+    ),
     linear-gradient(135deg, #edf6f5 0%, #f8fbfb 44%, #ffffff 100%);
   color: #0f3b4a;
   font-family:
@@ -697,7 +705,11 @@ header p {
 }
 .login-story {
   background:
-    radial-gradient(circle at 18% 18%, rgba(31, 157, 120, 0.2), transparent 32%),
+    radial-gradient(
+      circle at 18% 18%,
+      rgba(31, 157, 120, 0.2),
+      transparent 32%
+    ),
     #06222a;
   color: #fff;
   display: flex;
@@ -715,10 +727,7 @@ header p {
 }
 .login-story h2 {
   color: #fff;
-  font-family:
-    "Fraunces",
-    Georgia,
-    serif;
+  font-family: "Fraunces", Georgia, serif;
   font-size: clamp(40px, 5vw, 58px);
   font-weight: 750;
   letter-spacing: -0.045em;
@@ -778,10 +787,7 @@ header p {
 }
 .login-copy h1 {
   color: #0f3b4a;
-  font-family:
-    "Fraunces",
-    Georgia,
-    serif;
+  font-family: "Fraunces", Georgia, serif;
   font-size: 38px;
   font-weight: 750;
   letter-spacing: -0.035em;
@@ -949,7 +955,11 @@ header p {
 @media (prefers-color-scheme: dark) {
   .login-page {
     background:
-      radial-gradient(circle at 18% 18%, rgba(31, 157, 120, 0.15), transparent 28%),
+      radial-gradient(
+        circle at 18% 18%,
+        rgba(31, 157, 120, 0.15),
+        transparent 28%
+      ),
       #041f25;
   }
   .login-card {
